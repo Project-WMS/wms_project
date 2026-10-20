@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WMS Mobile - Quét QR Kệ & Bốc Dỡ Hàng</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body class="bg-slate-900 text-white font-sans min-h-screen pb-10">
+
+    <!-- Top Bar Mobile -->
+    <header class="bg-slate-800 px-4 py-3 border-b border-slate-700 flex justify-between items-center sticky top-0 z-20">
+        <div>
+            <h1 class="text-base font-extrabold text-emerald-400">📱 WMS MOBILE SCANNER</h1>
+            <p class="text-[11px] text-slate-400">Công nhân: Trần Văn B • Kết nối trực tiếp</p>
+        </div>
+        <button onclick="loadTasks()" class="bg-slate-700 hover:bg-slate-600 text-xs px-3 py-1.5 rounded-lg font-semibold">
+            🔄 Làm mới
+        </button>
+    </header>
+
+    <main class="max-w-md mx-auto p-4 space-y-4">
+
+        <!-- Khung Mở Camera Quét Mã QR -->
+        <section class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
+            <h2 class="text-sm font-bold text-emerald-400 mb-2">📷 Máy Quét Mã QR Ô Kệ (Bin Location)</h2>
+            
+            <!-- Vùng hiển thị Camera Live -->
+            <div id="qr-reader" class="w-full rounded-xl overflow-hidden bg-black mb-3 hidden"></div>
+
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <button onclick="toggleLiveCamera()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 px-3 rounded-xl">
+                    🎥 Bật/Tắt Camera Live
+                </button>
+                <label class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2.5 px-3 rounded-xl text-center cursor-pointer">
+                    📸 Chụp Ảnh QR Kệ
+                    <input type="file" id="qr-file" accept="image/*" capture="environment" class="hidden" onchange="scanFromFile(this)">
+                </label>
+            </div>
+
+            <div>
+                <label class="text-xs text-slate-400">Mã QR Ô Kệ vừa quét / nhập:</label>
+                <div class="flex gap-2 mt-1">
+                    <input type="text" id="scanned-qr" placeholder="VD: WH01-Z01-A01-R01-L1-B01"
+                           class="w-full bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-sm font-mono font-bold text-emerald-400 uppercase">
+                    <button onclick="document.getElementById('scanned-qr').value=''" class="bg-slate-700 px-3 rounded-xl text-xs">Xóa</button>
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <label class="text-xs text-slate-400">Mã vạch sản phẩm (bắt buộc khi Lấy hàng):</label>
+                <div class="flex gap-2 mt-1">
+                    <input type="text" id="scanned-barcode" placeholder="VD: 8935001234561"
+                           class="w-full bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-sm font-mono font-bold text-amber-400">
+                    <button onclick="document.getElementById('scanned-barcode').value=''" class="bg-slate-700 px-3 rounded-xl text-xs">Xóa</button>
+                </div>
+            </div>
+
+            <!-- Thông báo kết quả -->
+            <div id="scan-status" class="hidden mt-3 p-3 rounded-xl text-xs font-bold"></div>
+        </section>
+
+        <!-- 2 Tab Nhiệm vụ -->
+        <div class="grid grid-cols-2 gap-2 bg-slate-800 p-1 rounded-xl border border-slate-700">
+            <button id="tab-pick" onclick="switchTab('pick')" class="py-2 rounded-lg text-xs font-bold bg-amber-600 text-white">
+                📤 Lấy Hàng FEFO (<span id="count-pick">0</span>)
+            </button>
+            <button id="tab-put" onclick="switchTab('put')" class="py-2 rounded-lg text-xs font-bold text-slate-400">
+                📥 Xếp Hàng Lên Kệ (<span id="count-put">0</span>)
+            </button>
+        </div>
+
+        <!-- Danh sách Nhiệm vụ Lấy hàng FEFO (Picking) -->
+        <section id="list-pick" class="space-y-3"></section>
+
+        <!-- Danh sách Nhiệm vụ Xếp kệ (Putaway) -->
+        <section id="list-put" class="space-y-3 hidden"></section>
+
+    </main>
+
+    <script>
+        let html5QrCode = null;
+        let isCameraRunning = false;
+
+        let lastTasksSig = '';
+
+        function esc(v) {
+            return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        function errText(data) {
+            if (!data) return 'Có lỗi xảy ra';
+            if (data.message) return data.message;
+            if (Array.isArray(data.detail)) return data.detail.map(d => d.msg).join('; ');
+            return data.detail || 'Có lỗi xảy ra';
+        }
+
+        function showStatus(msg, isError = false) {
+            if (isError && navigator.vibrate) navigator.vibrate([200, 100, 200]);   // "rung báo lỗi" (UC5)
+            const el = document.getElementById('scan-status');
+            el.className = `mt-3 p-3 rounded-xl text-xs font-bold ${isError ? 'bg-rose-900/80 text-rose-200 border border-rose-500' : 'bg-emerald-900/80 text-emerald-200 border border-emerald-500'}`;
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+
+        function switchTab(tab) {
+            const isPick = tab === 'pick';
+            document.getElementById('list-pick').classList.toggle('hidden', !isPick);
+            document.getElementById('list-put').classList.toggle('hidden', isPick);
+            document.getElementById('tab-pick').className = `py-2 rounded-lg text-xs font-bold ${isPick ? 'bg-amber-600 text-white' : 'text-slate-400'}`;
+            document.getElementById('tab-put').className = `py-2 rounded-lg text-xs font-bold ${!isPick ? 'bg-blue-600 text-white' : 'text-slate-400'}`;
+        }
+
+        // Mã Bin có dạng WH01-Z01-...; mọi mã còn lại coi là mã vạch sản phẩm
+        function applyScanned(code) {
+            if (/^WH\d+-/i.test(code)) document.getElementById('scanned-qr').value = code;
+            else document.getElementById('scanned-barcode').value = code;
+        }
+
+        // 1. Bật/Tắt Camera trực tiếp
+        async function toggleLiveCamera() {
+            const readerEl = document.getElementById('qr-reader');
+            if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
+
+            if (isCameraRunning) {
+                await html5QrCode.stop();
+                readerEl.classList.add('hidden');
+                isCameraRunning = false;
+                return;
+            }
+
+            readerEl.classList.remove('hidden');
+            try {
+                await html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 220, height: 220 } },
+                    (decodedText) => {
+                        applyScanned(decodedText.trim());
+                        showStatus(`✅ Đã đọc mã QR: ${decodedText}`);
+                        html5QrCode.stop();
+                        readerEl.classList.add('hidden');
+                        isCameraRunning = false;
+                    }
+                );
+                isCameraRunning = true;
+            } catch (err) {
+                readerEl.classList.add('hidden');
+                showStatus("💡 Trình duyệt chặn Live Camera qua mạng HTTP LAN. Hãy bấm nút '📸 Chụp Ảnh QR Kệ' màu xanh bên cạnh!", true);
+            }
+        }
+
+        // 2. Chụp ảnh QR qua Camera điện thoại (Chạy được trên mọi kết nối Wi-Fi LAN)
+        async function scanFromFile(input) {
+            if (!input.files || !input.files[0]) return;
+            if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
+            try {
+                const decodedText = await html5QrCode.scanFile(input.files[0], true);
+                applyScanned(decodedText.trim());
+                showStatus(`✅ Đã giải mã ảnh QR thành công: ${decodedText}`);
+            } catch (err) {
+                showStatus("❌ Không tìm thấy mã QR rõ nét trong ảnh. Hãy chụp gần hơn hoặc bấm nút 'Điền QR kệ' bên dưới!", true);
+            }
+        }
+
+        // 3. Tải danh sách nhiệm vụ từ Backend
+        async function loadTasks() {
+            let data;
+            try {
+                const res = await fetch('/api/mobile/tasks');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                data = await res.json();
+            } catch (err) {
+                showStatus('❌ Không kết nối được backend. Kiểm tra mạng / FastAPI!', true);
+                return;
+            }
+
+            document.getElementById('count-pick').textContent = data.picking_tasks.length;
+            document.getElementById('count-put').textContent = data.putaway_tasks.length;
+
+            // Không vẽ lại nếu danh sách không đổi -> không làm mất số lượng công nhân đang nhập dở
+            const sig = JSON.stringify(data);
+            if (sig === lastTasksSig) return;
+            lastTasksSig = sig;
+
+            // Render Picking Tasks (FEFO)
+            const pickContainer = document.getElementById('list-pick');
+            if (!data.picking_tasks.length) {
+                pickContainer.innerHTML = `<div class="bg-slate-800 p-6 rounded-2xl text-center text-slate-400 text-xs">Chưa có lệnh lấy hàng nào. Hãy lên máy tính duyệt 1 Đơn Xuất FEFO!</div>`;
+            } else {
+                pickContainer.innerHTML = data.picking_tasks.map(t => `
+                    <div class="bg-slate-800 p-4 rounded-2xl border-l-4 border-amber-500 space-y-2 shadow">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-amber-400">ĐƠN XUẤT: ${esc(t.issue_code)}</span>
+                            <span class="bg-amber-900/60 text-amber-300 text-[10px] px-2 py-0.5 rounded font-bold">ƯU TIÊN FEFO</span>
+                        </div>
+                        <p class="text-sm font-bold">${esc(t.product_name)}</p>
+                        <div class="bg-slate-900 p-2.5 rounded-xl text-xs space-y-1">
+                            <p>📍 Tới Ô Kệ: <b class="text-emerald-400 font-mono">${esc(t.location_code)}</b></p>
+                            <p>🏷️ Lô bắt buộc: <b>${esc(t.batch_no)}</b> (HSD: ${esc(t.expiry_date)})</p>
+                            <p>📦 Số lượng cần lấy: <b class="text-amber-400 text-sm">${t.allocated_qty} ${esc(t.unit)}</b></p>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <label class="text-slate-400">SL thực lấy:</label>
+                            <input type="number" id="qty-pick-${t.task_id}" value="${t.allocated_qty}" min="1" max="${t.allocated_qty}"
+                                   class="w-20 bg-slate-900 border border-slate-600 rounded-lg px-2 py-1 text-center font-bold">
+                        </div>
+                        <div class="flex gap-2 pt-1">
+                            <button onclick="fillQR('${esc(t.location_code)}', '${esc(t.barcode)}')" class="bg-slate-700 hover:bg-slate-600 text-[11px] px-3 py-2 rounded-xl font-semibold">
+                                ⚡ Điền nhanh QR + mã vạch
+                            </button>
+                            <button onclick="confirmPick(${t.task_id})" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold py-2.5 rounded-xl">
+                                ✓ Xác Nhận Đã Quét & Lấy Hàng
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Render Putaway Tasks (Xếp kệ)
+            const putContainer = document.getElementById('list-put');
+            if (!data.putaway_tasks.length) {
+                putContainer.innerHTML = `<div class="bg-slate-800 p-6 rounded-2xl text-center text-slate-400 text-xs">Chưa có nhiệm vụ xếp kệ. Hãy lên máy tính duyệt 1 Phiếu Nhập!</div>`;
+            } else {
+                putContainer.innerHTML = data.putaway_tasks.map(t => `
+                    <div class="bg-slate-800 p-4 rounded-2xl border-l-4 border-blue-500 space-y-2 shadow">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-blue-400">PHIẾU NHẬP: ${esc(t.receipt_code)}</span>
+                            <span class="bg-blue-900/60 text-blue-300 text-[10px] px-2 py-0.5 rounded font-bold">PUTAWAY</span>
+                        </div>
+                        <p class="text-sm font-bold">${esc(t.product_name)}</p>
+                        <div class="bg-slate-900 p-2.5 rounded-xl text-xs space-y-1">
+                            <p>📍 Xếp vào Ô Kệ: <b class="text-emerald-400 font-mono">${esc(t.location_code)}</b></p>
+                            <p>🏷️ Số Lô: <b>${esc(t.batch_no)}</b> (HSD: ${esc(t.expiry_date)})</p>
+                            <p>📦 Số lượng xếp: <b class="text-blue-400 text-sm">${t.assigned_qty} ${esc(t.unit)}</b></p>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <label class="text-slate-400">SL thực xếp:</label>
+                            <input type="number" id="qty-put-${t.task_id}" value="${t.assigned_qty}" min="1" max="${t.assigned_qty}"
+                                   class="w-20 bg-slate-900 border border-slate-600 rounded-lg px-2 py-1 text-center font-bold">
+                        </div>
+                        <div class="flex gap-2 pt-1">
+                            <button onclick="fillQR('${esc(t.location_code)}')" class="bg-slate-700 hover:bg-slate-600 text-[11px] px-3 py-2 rounded-xl font-semibold">
+                                ⚡ Điền nhanh QR kệ
+                            </button>
+                            <button onclick="confirmPutaway(${t.task_id})" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2.5 rounded-xl">
+                                ✓ Xác Nhận Đã Quét & Xếp Kệ
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function fillQR(code, barcode) {
+            document.getElementById('scanned-qr').value = code;
+            if (barcode) document.getElementById('scanned-barcode').value = barcode;
+            showStatus(`⚡ Đã điền mã QR vị trí: ${code}${barcode ? ' và mã vạch sản phẩm' : ''}. Bấm nút Xác nhận để hoàn tất!`);
+        }
+
+        async function sendConfirm(url, payload) {
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                let data = null;
+                try { data = await res.json(); } catch (_) {}
+                showStatus(errText(data), !res.ok);
+                if (res.ok) {
+                    document.getElementById('scanned-qr').value = '';
+                    document.getElementById('scanned-barcode').value = '';
+                    lastTasksSig = '';
+                    loadTasks();
+                }
+            } catch (err) {
+                showStatus('❌ Mất kết nối tới backend, hãy thử lại!', true);
+            }
+        }
+
+        function confirmPick(taskId) {
+            const qr = document.getElementById('scanned-qr').value.trim();
+            const barcode = document.getElementById('scanned-barcode').value.trim();
+            const qty = parseInt(document.getElementById(`qty-pick-${taskId}`).value);
+            if (!qr) return showStatus("⚠️ Vui lòng quét mã QR của Ô Kệ trước khi xác nhận!", true);
+            if (!barcode) return showStatus("⚠️ Vui lòng quét mã vạch sản phẩm trên bao bì trước khi xác nhận!", true);
+            if (!(qty > 0)) return showStatus("⚠️ Số lượng thực lấy phải lớn hơn 0!", true);
+            sendConfirm('/api/mobile/picking/confirm', { task_id: taskId, scanned_qr: qr, scanned_barcode: barcode, actual_qty: qty });
+        }
+
+        function confirmPutaway(taskId) {
+            const qr = document.getElementById('scanned-qr').value.trim();
+            const qty = parseInt(document.getElementById(`qty-put-${taskId}`).value);
+            if (!qr) return showStatus("⚠️ Vui lòng quét mã QR của Ô Kệ trước khi xác nhận!", true);
+            if (!(qty > 0)) return showStatus("⚠️ Số lượng thực xếp phải lớn hơn 0!", true);
+            sendConfirm('/api/mobile/putaway/confirm', { task_id: taskId, scanned_qr: qr, actual_qty: qty });
+        }
+
+        loadTasks();
+        setInterval(loadTasks, 3000);
+    </script>
+</body>
+</html>

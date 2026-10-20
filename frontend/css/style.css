@@ -1,0 +1,17 @@
+
+/* Cấu hình chung cho giao diện WMS */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f4f6f9;
+    color: #263238;
+}
+
+h1 {
+    color: #1f4e79;
+}

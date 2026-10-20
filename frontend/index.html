@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WMS Desktop - Quản Lý Kho Thông Minh (FEFO & QR)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
+
+    <header class="bg-slate-900 text-white px-6 py-4 shadow-md flex justify-between items-center">
+        <div>
+            <h1 class="text-xl font-bold tracking-wide text-emerald-400">📦 HỆ THỐNG QUẢN LÝ KHO WMS (CHUẨN FEFO & QR BIN)</h1>
+            <p class="text-xs text-slate-400">Giao diện Điều hành Thủ kho (Web PC) • Đồng bộ thời gian thực với Mobile</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="bg-slate-800 text-xs px-3 py-1.5 rounded-full border border-slate-700">👤 Thủ kho: Nguyễn Văn A</span>
+            <a href="/mobile" target="_blank" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
+                📱 Mở màn hình Công nhân (Mobile QR)
+            </a>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-6 space-y-6">
+
+        <!-- Thông báo trạng thái chung -->
+        <div id="action-msg" class="hidden p-4 rounded-xl text-sm font-bold shadow-sm"></div>
+
+        <!-- 1. Hàng 4 Thẻ KPI -->
+        <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-blue-600">
+                <p class="text-xs uppercase font-bold text-slate-400">Tồn Kho Thực Tế (On-Hand)</p>
+                <p id="kpi-onhand" class="text-3xl font-extrabold text-slate-800 mt-1">0</p>
+                <p class="text-xs text-slate-500 mt-1">Tổng hàng vật lý đang trên kệ</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-amber-500">
+                <p class="text-xs uppercase font-bold text-slate-400">Đang Giữ Chỗ (Allocated)</p>
+                <p id="kpi-allocated" class="text-3xl font-extrabold text-amber-600 mt-1">0</p>
+                <p class="text-xs text-slate-500 mt-1">Đã khóa chờ công nhân ra lấy</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-emerald-600">
+                <p class="text-xs uppercase font-bold text-slate-400">Tồn Khả Dụng (Available)</p>
+                <p id="kpi-available" class="text-3xl font-extrabold text-emerald-600 mt-1">0</p>
+                <p class="text-xs text-slate-500 mt-1">= Thực tế trừ Giữ chỗ</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-rose-600">
+                <p class="text-xs uppercase font-bold text-slate-400">Cảnh Báo Ngưỡng & Cận Date</p>
+                <p id="kpi-alerts" class="text-3xl font-extrabold text-rose-600 mt-1">0</p>
+                <p class="text-xs text-slate-500 mt-1">Cần ưu tiên xuất FEFO / Nhập thêm</p>
+            </div>
+        </section>
+
+        <!-- 2. Lập Phiếu Nhập - Xuất - Điều Chuyển - Kiểm Kê -->
+        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- 2.1 Nhập Kho -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="text-sm font-bold text-blue-700 mb-2">📥 1. Phiếu Nhập Kho (Putaway)</h2>
+                <form id="form-inbound" class="space-y-2 text-xs">
+                    <div>
+                        <label class="font-semibold text-slate-600">Sản phẩm:</label>
+                        <select id="in-product" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="font-semibold text-slate-600">Số Lô:</label>
+                            <input type="text" id="in-batch" value="LOT-NEW-01" required class="w-full mt-0.5 p-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="font-semibold text-slate-600">Số lượng:</label>
+                            <input type="number" id="in-qty" value="25" min="1" required class="w-full mt-0.5 p-2 border rounded-lg">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="font-semibold text-slate-600">Hạn sử dụng:</label>
+                        <input type="date" id="in-expiry" required class="w-full mt-0.5 p-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="font-semibold text-slate-600">Ô Kệ (Bin) chỉ định:</label>
+                        <select id="in-location" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition">
+                        ✓ Duyệt Nhập & Gửi Mobile
+                    </button>
+                </form>
+            </div>
+
+            <!-- 2.2 Xuất Kho FEFO -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <h2 class="text-sm font-bold text-amber-700 mb-2">📤 2. Đơn Xuất Kho (FEFO)</h2>
+                    <p class="text-[11px] text-slate-500 mb-2">Tự động chọn lô cận date nhất, khóa <code>Allocated</code> và đẩy lệnh xuống điện thoại.</p>
+                    <form id="form-outbound" class="space-y-2 text-xs">
+                        <div>
+                            <label class="font-semibold text-slate-600">Sản phẩm xuất:</label>
+                            <select id="out-product" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
+                        </div>
+                        <div>
+                            <label class="font-semibold text-slate-600">Số lượng cần xuất:</label>
+                            <input type="number" id="out-qty" value="15" min="1" required class="w-full mt-0.5 p-2 border rounded-lg">
+                        </div>
+                        <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded-lg transition mt-2">
+                            ⚡ Duyệt Xuất & Khóa FEFO
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 2.3 Điều Chuyển Nội Bộ -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <h2 class="text-sm font-bold text-indigo-700 mb-2">🔄 3. Điều Chuyển Giữa Các Bin</h2>
+                    <form id="form-transfer" class="space-y-2 text-xs">
+                        <div>
+                            <label class="font-semibold text-slate-600">Chọn Lô & Kệ nguồn:</label>
+                            <select id="tf-stock" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
+                        </div>
+                        <div>
+                            <label class="font-semibold text-slate-600">Chuyển sang Ô Kệ đích:</label>
+                            <select id="tf-location" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
+                        </div>
+                        <div>
+                            <label class="font-semibold text-slate-600">Số lượng chuyển:</label>
+                            <input type="number" id="tf-qty" value="10" min="1" required class="w-full mt-0.5 p-2 border rounded-lg">
+                        </div>
+                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition">
+                            ⇄ Thực Hiện Điều Chuyển
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 2.4 Kiểm Kê & Đối Chiếu -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <h2 class="text-sm font-bold text-emerald-700 mb-2">🔍 4. Kiểm Kê & Đối Chiếu</h2>
+                    <p class="text-[11px] text-slate-500 mb-2">Nhập số thực đếm để tính chênh lệch (<code>variance_qty</code>) và cân bằng kho.</p>
+                    <form id="form-count" class="space-y-2 text-xs">
+                        <div>
+                            <label class="font-semibold text-slate-600">Chọn Lô & Ô Kệ kiểm đếm:</label>
+                            <select id="cnt-stock" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
+                        </div>
+                        <div>
+                            <label class="font-semibold text-slate-600">Số lượng thực đếm (Actual):</label>
+                            <input type="number" id="cnt-actual" value="38" min="0" required class="w-full mt-0.5 p-2 border rounded-lg">
+                        </div>
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg transition">
+                            ⚖️ Duyệt Cân Bằng Kiểm Kê
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. Khu vực Cảnh báo đỏ & Biểu đồ -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-rose-200">
+                <h2 class="text-base font-bold text-rose-700 mb-3">🚨 Cảnh Báo Tồn Dưới Định Mức & Hàng Cận Date (FEFO)</h2>
+                <div id="alerts-container" class="space-y-2 text-xs max-h-60 overflow-y-auto"></div>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="text-base font-bold text-slate-700 mb-3">📊 Biểu Đồ Tồn Thực Tế & Khả Dụng Theo Lô Hàng</h2>
+                <canvas id="stockChart" height="125"></canvas>
+            </div>
+        </section>
+
+        <!-- 4. Sơ đồ Kệ & Mã QR Bin -->
+        <section class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h2 class="text-base font-bold text-slate-800">🏷️ Sơ Đồ Ô Kệ (Bin Locations) & Mã QR Định Danh</h2>
+                    <p class="text-xs text-slate-500">Đưa Camera điện thoại quét trực tiếp các mã QR dưới đây để xác nhận vị trí kệ</p>
+                </div>
+                <button onclick="window.print()" class="bg-slate-800 text-white text-xs px-3 py-2 rounded-lg hover:bg-slate-700">🖨️ In Tem QR Kệ</button>
+            </div>
+            <div id="locations-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4"></div>
+        </section>
+
+        <!-- 5. Bảng Tồn Kho, Báo Cáo Chênh Lệch Kiểm Kê & Sổ Thẻ Kho -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+                <h2 class="text-sm font-bold text-slate-800 mb-3">📋 1. Tồn Kho Chi Tiết (Chuẩn FEFO)</h2>
+                <table class="w-full text-xs text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-600 border-b">
+                            <th class="p-2">Ô Kệ / Lô</th>
+                            <th class="p-2">Sản phẩm</th>
+                            <th class="p-2 text-right">Thực</th>
+                            <th class="p-2 text-right">Giữ</th>
+                            <th class="p-2 text-right">Khả dụng</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-stocks" class="divide-y"></tbody>
+                </table>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+                <h2 class="text-sm font-bold text-emerald-800 mb-3">⚖️ 2. Báo Cáo Chênh Lệch Kiểm Kê</h2>
+                <table class="w-full text-xs text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-600 border-b">
+                            <th class="p-2">Mã Phiếu / Kệ</th>
+                            <th class="p-2">Sản phẩm / Lô</th>
+                            <th class="p-2 text-right">Hệ thống</th>
+                            <th class="p-2 text-right">Thực đếm</th>
+                            <th class="p-2 text-right">Lệch</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-counts" class="divide-y"></tbody>
+                </table>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+                <h2 class="text-sm font-bold text-slate-800 mb-3">📜 3. Sổ Thẻ Kho (Stock Ledger)</h2>
+                <table class="w-full text-xs text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-600 border-b">
+                            <th class="p-2">Loại / Phiếu</th>
+                            <th class="p-2">Hàng / Lô</th>
+                            <th class="p-2">Vị trí Bin</th>
+                            <th class="p-2 text-right">Biến động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-ledger" class="divide-y"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        let chartInstance = null;
+        let initializedSelects = false;
+        let lastLocationsSig = '';
+
+        // Chống chèn HTML/JS từ dữ liệu người dùng nhập (số lô, tên hàng...)
+        function esc(v) {
+            return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        // FastAPI trả detail là chuỗi (lỗi nghiệp vụ) hoặc mảng (lỗi 422 validate)
+        function errText(data) {
+            if (!data) return 'Có lỗi xảy ra';
+            if (data.message) return data.message;
+            if (Array.isArray(data.detail)) return data.detail.map(d => d.msg).join('; ');
+            return data.detail || 'Có lỗi xảy ra';
+        }
+
+        async function postJSON(url, payload) {
+            try {
+                const res = await fetch(url, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                let data = null;
+                try { data = await res.json(); } catch (_) {}
+                showMsg(errText(data), !res.ok);
+            } catch (e) {
+                showMsg('Không kết nối được backend. Hãy kiểm tra FastAPI!', true);
+            }
+            loadDashboard();
+        }
+
+        const defaultDate = new Date();
+        defaultDate.setDate(defaultDate.getDate() + 60);
+        document.getElementById('in-expiry').value = defaultDate.toISOString().split('T')[0];
+
+        async function loadDashboard() {
+            try {
+                const res = await fetch('/api/dashboard');
+                const data = await res.json();
+
+                document.getElementById('kpi-onhand').textContent = data.kpi.total_on_hand;
+                document.getElementById('kpi-allocated').textContent = data.kpi.total_allocated;
+                document.getElementById('kpi-available').textContent = data.kpi.total_available;
+                document.getElementById('kpi-alerts').textContent = data.low_stock_alerts.length + data.expiring_alerts.length + (data.over_stock_alerts || []).length;
+
+                if (!initializedSelects) {
+                    const prodOptions = data.products.map(p => `<option value="${p.id}">${esc(p.sku)} - ${esc(p.product_name)}</option>`).join('');
+                    const locOptions = data.locations.map(l => `<option value="${l.id}">${esc(l.location_code)}${l.status !== 'active' ? ' (' + esc(l.status) + ')' : ''}</option>`).join('');
+                    document.getElementById('in-product').innerHTML = prodOptions;
+                    document.getElementById('out-product').innerHTML = prodOptions;
+                    document.getElementById('in-location').innerHTML = locOptions;
+                    document.getElementById('tf-location').innerHTML = locOptions;
+                    initializedSelects = true;
+                }
+
+                // Cập nhật dropdown lô tồn kho cho Điều chuyển & Kiểm kê
+                const stockOptions = data.stocks.map(s => `<option value="${s.id}">${esc(s.location_code)} | ${esc(s.batch_no)} (Tồn: ${s.quantity_on_hand}, khả dụng: ${s.quantity_available})</option>`).join('');
+                ['tf-stock', 'cnt-stock'].forEach(id => {
+                    const sel = document.getElementById(id);
+                    const keep = sel.value;               // giữ lựa chọn đang chọn dở
+                    sel.innerHTML = stockOptions;
+                    if (keep && [...sel.options].some(o => o.value === keep)) sel.value = keep;
+                });
+
+                // Hiển thị Cảnh báo đỏ (FEFO & Chạm đáy)
+                const alertsHtml = [];
+                data.expiring_alerts.forEach(a => {
+                    alertsHtml.push(`<div class="p-2.5 bg-amber-50 border-l-4 border-amber-500 rounded flex justify-between items-center">
+                        <div><b class="text-amber-800">[${a.days_left < 0 ? 'ĐÃ HẾT HẠN' : 'CẬN DATE FEFO'}]</b> Lô <b>${esc(a.batch_no)}</b> (${esc(a.product_name)}) tại <b>${esc(a.location_code)}</b></div>
+                        <span class="bg-amber-200 text-amber-900 font-bold px-2 py-1 rounded">${a.days_left < 0 ? 'Quá hạn ' + (-a.days_left) + ' ngày' : 'Còn ' + a.days_left + ' ngày'} (${esc(a.expiry_date)})</span>
+                    </div>`);
+                });
+                data.low_stock_alerts.forEach(a => {
+                    alertsHtml.push(`<div class="p-2.5 bg-rose-50 border-l-4 border-rose-600 rounded flex justify-between items-center">
+                        <div><b class="text-rose-700">[CHẠM ĐÁY TỒN]</b> ${esc(a.sku)} - ${esc(a.product_name)}</div>
+                        <span class="bg-rose-200 text-rose-900 font-bold px-2 py-1 rounded">Khả dụng: ${a.total_available} / Min: ${a.min_safety_stock}</span>
+                    </div>`);
+                });
+                (data.over_stock_alerts || []).forEach(a => {
+                    alertsHtml.push(`<div class="p-2.5 bg-violet-50 border-l-4 border-violet-600 rounded flex justify-between items-center">
+                        <div><b class="text-violet-700">[VƯỢT ĐỊNH MỨC]</b> ${esc(a.sku)} - ${esc(a.product_name)}</div>
+                        <span class="bg-violet-200 text-violet-900 font-bold px-2 py-1 rounded">Tồn: ${a.total_on_hand} / Max: ${a.max_safety_stock}</span>
+                    </div>`);
+                });
+                document.getElementById('alerts-container').innerHTML = alertsHtml.length ? alertsHtml.join('') : '<p class="text-emerald-600 font-semibold">✅ Tất cả mặt hàng đều trong ngưỡng an toàn!</p>';
+
+                // Vẽ Sơ đồ Kệ & QR Code (chỉ vẽ lại khi dữ liệu thay đổi)
+                const locSig = JSON.stringify(data.locations);
+                if (locSig !== lastLocationsSig) {
+                    lastLocationsSig = locSig;
+                    const locContainer = document.getElementById('locations-grid');
+                    locContainer.innerHTML = data.locations.map(l => {
+                        const pct = Math.min(100, Math.round((l.current_weight_kg / l.max_capacity_kg) * 100));
+                        const barColor = pct >= 90 ? 'bg-rose-500' : (pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500');
+                        return `<div class="border rounded-xl p-3 bg-slate-50 flex flex-col items-center text-center shadow-sm">
+                            <span class="text-xs font-bold text-slate-700 bg-white px-2 py-1 rounded border mb-2">${esc(l.location_code)}</span>
+                            <div id="qr-${l.id}" class="bg-white p-2 rounded border mb-2"></div>
+                            <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                                <div class="${barColor} h-full" style="width:${pct}%"></div>
+                            </div>
+                            <span class="text-[11px] text-slate-500 mt-1">Tải trọng: ${l.current_weight_kg} / ${l.max_capacity_kg} kg (${pct}%)</span>
+                        </div>`;
+                    }).join('');
+
+                    data.locations.forEach(l => {
+                        new QRCode(document.getElementById(`qr-${l.id}`), {
+                            text: l.location_code,
+                            width: 88,
+                            height: 88
+                        });
+                    });
+                }
+
+                // Bảng tồn kho chi tiết
+                document.getElementById('table-stocks').innerHTML = data.stocks.map(s => `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-2"><span class="font-mono font-bold text-blue-700">${esc(s.location_code)}</span><br/><span class="text-[11px] text-slate-500">${esc(s.batch_no)} (HSD: ${esc(s.expiry_date)})</span></td>
+                        <td class="p-2 font-medium">${esc(s.product_name)}</td>
+                        <td class="p-2 text-right font-bold">${s.quantity_on_hand}</td>
+                        <td class="p-2 text-right font-bold text-amber-600">${s.quantity_allocated}</td>
+                        <td class="p-2 text-right font-bold text-emerald-600">${s.quantity_available}</td>
+                    </tr>
+                `).join('');
+
+                // Bảng Báo cáo chênh lệch kiểm kê
+                const counts = data.counts || [];
+                document.getElementById('table-counts').innerHTML = counts.length ? counts.map(c => `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-2"><b>${esc(c.count_code)}</b><br/><span class="font-mono text-[10px] text-blue-700">${esc(c.location_code)}</span></td>
+                        <td class="p-2">${esc(c.sku)}<br/><span class="text-slate-400">${esc(c.batch_no)}</span></td>
+                        <td class="p-2 text-right">${c.system_qty}</td>
+                        <td class="p-2 text-right font-bold">${c.actual_qty}</td>
+                        <td class="p-2 text-right font-bold ${c.variance_qty < 0 ? 'text-rose-600' : (c.variance_qty > 0 ? 'text-emerald-600' : 'text-slate-500')}">${c.variance_qty > 0 ? '+' + c.variance_qty : c.variance_qty}</td>
+                    </tr>
+                `).join('') : `<tr><td colspan="5" class="p-4 text-center text-slate-400">Chưa có đợt kiểm kê nào. Hãy bấm nút Duyệt Cân Bằng Kiểm Kê ở trên!</td></tr>`;
+
+                // Bảng Thẻ kho
+                document.getElementById('table-ledger').innerHTML = data.ledger.map(lg => {
+                    const isPlus = lg.quantity_change > 0;
+                    // Điều chuyển hiển thị "Bin nguồn → Bin đích"; còn lại hiển thị Bin phát sinh
+                    const locTxt = (lg.from_loc && lg.to_loc) ? `${esc(lg.from_loc)}<br/>→ ${esc(lg.to_loc)}` : esc(lg.to_loc || lg.from_loc || '-');
+                    return `<tr class="hover:bg-slate-50">
+                        <td class="p-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800">${esc(lg.transaction_type)}</span><br/><b>${esc(lg.reference_code)}</b></td>
+                        <td class="p-2">${esc(lg.sku)}<br/><span class="text-slate-400">${esc(lg.batch_no)}</span></td>
+                        <td class="p-2 font-mono text-[10px]">${locTxt}</td>
+                        <td class="p-2 text-right font-bold ${isPlus ? 'text-emerald-600' : 'text-rose-600'}">${isPlus ? '+' + lg.quantity_change : lg.quantity_change}<br/><span class="text-[10px] text-slate-400">Dư: ${lg.balance_after}</span></td>
+                    </tr>`;
+                }).join('');
+
+                // Biểu đồ
+                const labels = data.stocks.map(s => `${s.sku} (${s.batch_no})`);
+                const onHandData = data.stocks.map(s => s.quantity_on_hand);
+                const availData = data.stocks.map(s => s.quantity_available);
+
+                if (chartInstance) chartInstance.destroy();
+                const ctx = document.getElementById('stockChart').getContext('2d');
+                chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'Tồn Thực Tế', data: onHandData, backgroundColor: '#3b82f6' },
+                            { label: 'Tồn Khả Dụng', data: availData, backgroundColor: '#10b981' }
+                        ]
+                    },
+                    options: { animation: false, responsive: true, plugins: { legend: { position: 'bottom' } } }
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function showMsg(text, isError = false) {
+            const box = document.getElementById('action-msg');
+            box.className = `p-4 rounded-xl text-sm font-bold shadow-sm ${isError ? 'bg-rose-100 text-rose-800 border border-rose-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'}`;
+            box.textContent = text;
+            box.classList.remove('hidden');
+        }
+
+        document.getElementById('form-inbound').addEventListener('submit', (e) => {
+            e.preventDefault();
+            postJSON('/api/inbound/create', {
+                supplier_id: 1,
+                product_id: parseInt(document.getElementById('in-product').value),
+                batch_no: document.getElementById('in-batch').value.trim(),
+                expiry_date: document.getElementById('in-expiry').value,
+                expected_qty: parseInt(document.getElementById('in-qty').value),
+                to_location_id: parseInt(document.getElementById('in-location').value)
+            });
+        });
+
+        document.getElementById('form-outbound').addEventListener('submit', (e) => {
+            e.preventDefault();
+            postJSON('/api/outbound/create', {
+                customer_id: 3,
+                product_id: parseInt(document.getElementById('out-product').value),
+                requested_qty: parseInt(document.getElementById('out-qty').value)
+            });
+        });
+
+        document.getElementById('form-transfer').addEventListener('submit', (e) => {
+            e.preventDefault();
+            postJSON('/api/transfer/execute', {
+                stock_id: parseInt(document.getElementById('tf-stock').value),
+                to_location_id: parseInt(document.getElementById('tf-location').value),
+                transfer_qty: parseInt(document.getElementById('tf-qty').value)
+            });
+        });
+
+        document.getElementById('form-count').addEventListener('submit', (e) => {
+            e.preventDefault();
+            postJSON('/api/count/reconcile', {
+                stock_id: parseInt(document.getElementById('cnt-stock').value),
+                actual_qty: parseInt(document.getElementById('cnt-actual').value)
+            });
+        });
+
+        loadDashboard();
+        setInterval(loadDashboard, 5000);
+    </script>
+</body>
+</html>
