@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>WMS Mobile - Quét QR Kệ & Bốc Dỡ Hàng</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/js/auth.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 <body class="bg-slate-900 text-white font-sans min-h-screen pb-10">
@@ -13,11 +14,16 @@
     <header class="bg-slate-800 px-4 py-3 border-b border-slate-700 flex justify-between items-center sticky top-0 z-20">
         <div>
             <h1 class="text-base font-extrabold text-emerald-400">📱 WMS MOBILE SCANNER</h1>
-            <p class="text-[11px] text-slate-400">Công nhân: Trần Văn B • Kết nối trực tiếp</p>
+            <p id="user-line" class="text-[11px] text-slate-400">Kết nối trực tiếp</p>
         </div>
-        <button onclick="loadTasks()" class="bg-slate-700 hover:bg-slate-600 text-xs px-3 py-1.5 rounded-lg font-semibold">
-            🔄 Làm mới
-        </button>
+        <div class="flex gap-2">
+            <button onclick="loadTasks()" class="bg-slate-700 hover:bg-slate-600 text-xs px-3 py-1.5 rounded-lg font-semibold">
+                🔄 Làm mới
+            </button>
+            <button onclick="wmsLogout()" class="bg-rose-700 hover:bg-rose-600 text-xs px-3 py-1.5 rounded-lg font-semibold">
+                Thoát
+            </button>
+        </div>
     </header>
 
     <main class="max-w-md mx-auto p-4 space-y-4">
@@ -84,6 +90,10 @@
         let isCameraRunning = false;
 
         let lastTasksSig = '';
+
+        // Bắt buộc đăng nhập (mọi vai trò đã được duyệt đều được quét QR)
+        const me = requireLogin();
+        if (me) document.getElementById('user-line').textContent = `${ROLE_LABEL[me.role] || me.role}: ${me.full_name} • Kết nối trực tiếp`;
 
         function esc(v) {
             return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -167,10 +177,11 @@
         async function loadTasks() {
             let data;
             try {
-                const res = await fetch('/api/mobile/tasks');
+                const res = await apiFetch('/api/mobile/tasks');
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 data = await res.json();
             } catch (err) {
+                if (err.message === 'unauthorized') return;
                 showStatus('❌ Không kết nối được backend. Kiểm tra mạng / FastAPI!', true);
                 return;
             }
@@ -260,7 +271,7 @@
 
         async function sendConfirm(url, payload) {
             try {
-                const res = await fetch(url, {
+                const res = await apiFetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -275,6 +286,7 @@
                     loadTasks();
                 }
             } catch (err) {
+                if (err.message === 'unauthorized') return;
                 showStatus('❌ Mất kết nối tới backend, hãy thử lại!', true);
             }
         }
@@ -297,8 +309,10 @@
             sendConfirm('/api/mobile/putaway/confirm', { task_id: taskId, scanned_qr: qr, actual_qty: qty });
         }
 
-        loadTasks();
-        setInterval(loadTasks, 3000);
+        if (me) {
+            loadTasks();
+            setInterval(loadTasks, 3000);
+        }
     </script>
 </body>
 </html>

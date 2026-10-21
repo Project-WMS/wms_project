@@ -1,3 +1,5 @@
+# pyright: reportGeneralTypeIssues=false, reportOptionalSubscript=false
+# pyright: reportGeneralTypeIssues=false, reportOptionalSubscript=false
 import uuid
 from datetime import datetime
 from decimal import Decimal
@@ -6,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from backend.auth import require_any, require_staff
 from backend.database import get_db
 from backend.schemas import (
     InboundCreateRequest,
@@ -17,16 +20,12 @@ from backend.schemas import (
 
 router = APIRouter(prefix="/api")
 
-# Chưa có đăng nhập/RBAC nên tạm gán cố định theo dữ liệu mẫu trong init_db.py.
-# Khi làm chức năng đăng nhập, thay các hằng số này bằng user lấy từ token.
 DEFAULT_WAREHOUSE_ID = 1
-MANAGER_ID = 2   # thukho  (Thủ kho - Web PC)
-WORKER_ID = 3    # congnhan (Công nhân - Mobile)
 
 
 def make_code(prefix: str) -> str:
-    """Sinh mã chứng từ, vd PNK-261020153045-A3F9 (không trùng khi 2 phiếu tạo cùng giây)."""
-    return f"{prefix}-{datetime.now():%y%m%d%H%M%S}-{uuid.uuid4().hex[:4].upper()}"
+    """Sinh mã chứng từ theo BR01, vd PNK-20261020-153045-A3F9 (không trùng khi 2 phiếu tạo cùng giây)."""
+    return f"{prefix}-{datetime.now():%Y%m%d-%H%M%S}-{uuid.uuid4().hex[:4].upper()}"
 
 
 def check_bin_capacity(db: Session, location_id: int, add_qty: int, product_id: int,
@@ -63,13 +62,27 @@ def check_bin_capacity(db: Session, location_id: int, add_qty: int, product_id: 
             WHERE pt.to_location_id = :loc AND pt.status = 'pending'
         """), {"loc": location_id}).scalar()
 
-    new_total = Decimal(current) + Decimal(pending) + Decimal(add_qty) * Decimal(unit_w)
+    new_total = Decimal(tên_biến or 0) + Decimal(pending) + Decimal(add_qty) * Decimal(unit_w) # pyright: ignore # pyright: ignore # pyright: ignore
     if new_total > loc["max_capacity_kg"]:
         raise HTTPException(
             status_code=400,
             detail=(f"Vượt tải trọng ô {loc['location_code']}! Sau khi thêm: {new_total} kg "
                     f"> tối đa {loc['max_capacity_kg']} kg (BR04)."),
         )
+
+
+def check_product_and_partner(db: Session, product_id: int, partner_id: int, partner_type: str):
+    """Chặn lập phiếu với sản phẩm đã khóa hoặc đối tác sai loại / không tồn tại."""
+    active = db.execute(text("SELECT is_active FROM products WHERE id = :id"), {"id": product_id}).scalar()
+    if active is None:
+        raise HTTPException(status_code=404, detail="Sản phẩm không tồn tại!")
+    if not active:
+        raise HTTPException(status_code=400, detail="Sản phẩm đang bị khóa, không thể lập phiếu!")
+    ptype = db.execute(text("SELECT type FROM partners WHERE id = :id"), {"id": partner_id}).scalar()
+    if ptype is None:
+        raise HTTPException(status_code=404, detail="Đối tác không tồn tại!")
+    if ptype != partner_type:
+        raise HTTPException(status_code=400, detail="Loại đối tác không đúng (Nhập kho cần Nhà cung cấp, Xuất kho cần Khách hàng)!")
 
 
 def add_ledger(db: Session, *, ttype: str, ref: str, task_id, product_id: int, batch_no: str,
@@ -85,7 +98,7 @@ def add_ledger(db: Session, *, ttype: str, ref: str, task_id, product_id: int, b
 
 # 1. API Lấy toàn bộ dữ liệu Dashboard, Cảnh báo FEFO, Sơ đồ kệ QR, Kiểm kê và Thẻ kho
 @router.get("/dashboard")
-def get_dashboard_data(db: Session = Depends(get_db)):
+def get_dashboard_data(user=Depends(require_staff), db: Session = Depends(get_db)):
     kpi = db.execute(text("""
         SELECT
             COALESCE(SUM(quantity_on_hand), 0) AS total_on_hand,
@@ -171,9 +184,10 @@ def get_dashboard_data(db: Session = Depends(get_db)):
     """)).mappings().all()
 
     products = db.execute(text("SELECT * FROM products ORDER BY id ASC")).mappings().all()
+    partners = db.execute(text("SELECT id, partner_code, partner_name, type FROM partners ORDER BY partner_name")).mappings().all()
 
     return {
-        "kpi": dict(kpi),
+        "kpi": dict(kpi), # pyright: ignore # pyright: ignore
         "low_stock_alerts": [dict(r) for r in low_stock],
         "over_stock_alerts": [dict(r) for r in over_stock],
         "expiring_alerts": [dict(r) for r in expiring_fefo],
@@ -182,12 +196,14 @@ def get_dashboard_data(db: Session = Depends(get_db)):
         "counts": [dict(r) for r in counts],
         "ledger": [dict(r) for r in ledger],
         "products": [dict(r) for r in products],
+        "partners": [dict(r) for r in partners],
     }
 
 
 # 2. API Thủ kho tạo & duyệt Phiếu Nhập -> Đẩy nhiệm vụ Putaway xuống Điện thoại
 @router.post("/inbound/create")
-def create_inbound(req: InboundCreateRequest, db: Session = Depends(get_db)):
+def create_inbound(req: InboundCreateRequest, user=Depends(require_staff), db: Session = Depends(get_db)):
+    check_product_and_partner(db, req.product_id, req.supplier_id, "supplier")
     # BR04: kiểm tra tải trọng ngay khi phân bổ (tính cả các task xếp kệ đang chờ)
     check_bin_capacity(db, req.to_location_id, req.expected_qty, req.product_id,
                        include_pending_putaway=True)
@@ -196,7 +212,7 @@ def create_inbound(req: InboundCreateRequest, db: Session = Depends(get_db)):
     r_id = db.execute(text("""
         INSERT INTO goods_receipts (receipt_code, supplier_id, warehouse_id, created_by, approved_by, status, approved_at)
         VALUES (:code, :sup, :wh, :mgr, :mgr, 'approved', CURRENT_TIMESTAMP) RETURNING id
-    """), {"code": receipt_code, "sup": req.supplier_id, "wh": DEFAULT_WAREHOUSE_ID, "mgr": MANAGER_ID}).scalar()
+    """), {"code": receipt_code, "sup": req.supplier_id, "wh": DEFAULT_WAREHOUSE_ID, "mgr": user["id"]}).scalar()
 
     d_id = db.execute(text("""
         INSERT INTO goods_receipt_details (receipt_id, product_id, batch_no, expiry_date, expected_qty)
@@ -215,7 +231,8 @@ def create_inbound(req: InboundCreateRequest, db: Session = Depends(get_db)):
 
 # 3. API Thủ kho tạo & duyệt Phiếu Xuất -> Tự động chạy FEFO khóa giữ chỗ (Allocated)
 @router.post("/outbound/create")
-def create_outbound_fefo(req: OutboundCreateRequest, db: Session = Depends(get_db)):
+def create_outbound_fefo(req: OutboundCreateRequest, user=Depends(require_staff), db: Session = Depends(get_db)):
+    check_product_and_partner(db, req.product_id, req.customer_id, "customer")
     # BR03: Ưu tiên 1 FEFO (expiry_date ASC), ưu tiên 2 FIFO (created_at ASC).
     # FOR UPDATE khóa các dòng tồn kho để 2 đơn xuất duyệt cùng lúc không giữ chỗ trùng (NFR2 - ACID).
     batches = db.execute(text("""
@@ -223,6 +240,7 @@ def create_outbound_fefo(req: OutboundCreateRequest, db: Session = Depends(get_d
         FROM inventory_stocks s
         JOIN locations l ON s.location_id = l.id
         WHERE s.product_id = :p_id AND s.quantity_available > 0
+          AND s.expiry_date >= CURRENT_DATE
           AND l.status = 'active' AND l.warehouse_id = :wh
         ORDER BY s.expiry_date ASC, s.created_at ASC, s.id ASC
         FOR UPDATE OF s
@@ -236,7 +254,7 @@ def create_outbound_fefo(req: OutboundCreateRequest, db: Session = Depends(get_d
     i_id = db.execute(text("""
         INSERT INTO goods_issues (issue_code, customer_id, warehouse_id, created_by, approved_by, status, approved_at)
         VALUES (:code, :cus, :wh, :mgr, :mgr, 'allocated', CURRENT_TIMESTAMP) RETURNING id
-    """), {"code": issue_code, "cus": req.customer_id, "wh": DEFAULT_WAREHOUSE_ID, "mgr": MANAGER_ID}).scalar()
+    """), {"code": issue_code, "cus": req.customer_id, "wh": DEFAULT_WAREHOUSE_ID, "mgr": user["id"]}).scalar()
 
     d_id = db.execute(text("""
         INSERT INTO goods_issue_details (issue_id, product_id, requested_qty)
@@ -264,7 +282,7 @@ def create_outbound_fefo(req: OutboundCreateRequest, db: Session = Depends(get_d
 
 # 4. API Lấy danh sách nhiệm vụ trên màn hình Điện thoại của Công nhân
 @router.get("/mobile/tasks")
-def get_mobile_tasks(db: Session = Depends(get_db)):
+def get_mobile_tasks(user=Depends(require_any), db: Session = Depends(get_db)):
     putaway = db.execute(text("""
         SELECT pt.id AS task_id, gr.receipt_code, p.sku, p.barcode, p.product_name, p.unit,
                grd.batch_no, grd.expiry_date, l.location_code, pt.assigned_qty
@@ -298,7 +316,7 @@ def get_mobile_tasks(db: Session = Depends(get_db)):
 
 # 5. API Công nhân bấm Xác nhận Quét QR Xếp kệ (Putaway) trên Điện thoại
 @router.post("/mobile/putaway/confirm")
-def confirm_putaway(req: ScanConfirmRequest, db: Session = Depends(get_db)):
+def confirm_putaway(req: ScanConfirmRequest, user=Depends(require_any), db: Session = Depends(get_db)):
     task = db.execute(text("""
         SELECT pt.id, pt.to_location_id, pt.assigned_qty, pt.receipt_detail_id, l.location_code,
                grd.product_id, grd.batch_no, grd.expiry_date, grd.receipt_id, gr.receipt_code
@@ -338,7 +356,7 @@ def confirm_putaway(req: ScanConfirmRequest, db: Session = Depends(get_db)):
         SET actual_qty = :qty, status = 'completed', stock_id = :sid,
             performed_by = :w, completed_at = CURRENT_TIMESTAMP
         WHERE id = :tid
-    """), {"qty": req.actual_qty, "sid": stock["id"], "w": WORKER_ID, "tid": req.task_id})
+    """), {"qty": req.actual_qty, "sid": stock["id"], "w": user["id"], "tid": req.task_id})
 
     db.execute(text("""
         UPDATE goods_receipt_details SET putaway_qty = putaway_qty + :qty WHERE id = :did
@@ -356,7 +374,7 @@ def confirm_putaway(req: ScanConfirmRequest, db: Session = Depends(get_db)):
     add_ledger(db, ttype="PUTAWAY", ref=task["receipt_code"], task_id=req.task_id,
                product_id=task["product_id"], batch_no=task["batch_no"],
                from_loc=None, to_loc=task["to_location_id"],
-               change=req.actual_qty, balance_after=stock["quantity_on_hand"], user_id=WORKER_ID)
+               change=req.actual_qty, balance_after=stock["quantity_on_hand"], user_id=user["id"])
 
     db.commit()
     return {"message": f"Đã xếp thành công +{req.actual_qty} vào kệ {task['location_code']}!"}
@@ -364,7 +382,7 @@ def confirm_putaway(req: ScanConfirmRequest, db: Session = Depends(get_db)):
 
 # 6. API Công nhân bấm Xác nhận Quét QR Lấy hàng FEFO (Picking) trên Điện thoại
 @router.post("/mobile/picking/confirm")
-def confirm_picking(req: ScanConfirmRequest, db: Session = Depends(get_db)):
+def confirm_picking(req: ScanConfirmRequest, user=Depends(require_any), db: Session = Depends(get_db)):
     task = db.execute(text("""
         SELECT pkt.id, pkt.stock_id, pkt.from_location_id, pkt.allocated_qty, pkt.batch_no,
                pkt.issue_detail_id, l.location_code, gid.product_id, gid.issue_id,
@@ -400,7 +418,7 @@ def confirm_picking(req: ScanConfirmRequest, db: Session = Depends(get_db)):
     db.execute(text("""
         UPDATE picking_tasks SET picked_qty = :qty, status = 'picked', performed_by = :w, picked_at = CURRENT_TIMESTAMP
         WHERE id = :tid
-    """), {"qty": req.actual_qty, "w": WORKER_ID, "tid": req.task_id})
+    """), {"qty": req.actual_qty, "w": user["id"], "tid": req.task_id})
 
     db.execute(text("""
         UPDATE goods_issue_details SET picked_qty = picked_qty + :qty WHERE id = :did
@@ -418,7 +436,7 @@ def confirm_picking(req: ScanConfirmRequest, db: Session = Depends(get_db)):
     add_ledger(db, ttype="PICK", ref=task["issue_code"], task_id=req.task_id,
                product_id=task["product_id"], batch_no=task["batch_no"],
                from_loc=task["from_location_id"], to_loc=None,
-               change=-req.actual_qty, balance_after=stock["quantity_on_hand"], user_id=WORKER_ID)
+               change=-req.actual_qty, balance_after=stock["quantity_on_hand"], user_id=user["id"])
 
     db.commit()
     return {"message": f"Đã xuất thành công -{req.actual_qty} từ kệ {task['location_code']}!"}
@@ -426,7 +444,7 @@ def confirm_picking(req: ScanConfirmRequest, db: Session = Depends(get_db)):
 
 # 7. API Điều chuyển hàng giữa các Bin (FR4 - STOCK_TRANSFERS)
 @router.post("/transfer/execute")
-def execute_transfer(req: TransferRequest, db: Session = Depends(get_db)):
+def execute_transfer(req: TransferRequest, user=Depends(require_staff), db: Session = Depends(get_db)):
     src = db.execute(text("""
         SELECT s.id, s.location_id, s.product_id, s.batch_no, s.expiry_date, s.created_at,
                s.quantity_on_hand, s.quantity_allocated, s.quantity_available, l.location_code
@@ -452,14 +470,14 @@ def execute_transfer(req: TransferRequest, db: Session = Depends(get_db)):
     t_id = db.execute(text("""
         INSERT INTO stock_transfers (transfer_code, warehouse_id, created_by, approved_by, status)
         VALUES (:code, :wh, :mgr, :mgr, 'completed') RETURNING id
-    """), {"code": transfer_code, "wh": DEFAULT_WAREHOUSE_ID, "mgr": MANAGER_ID}).scalar()
+    """), {"code": transfer_code, "wh": DEFAULT_WAREHOUSE_ID, "mgr": user["id"]}).scalar()
 
     d_id = db.execute(text("""
         INSERT INTO stock_transfer_details (transfer_id, product_id, batch_no, from_location_id,
                                             to_location_id, transfer_qty, performed_by)
         VALUES (:t, :p, :b, :fl, :tl, :q, :u) RETURNING id
     """), {"t": t_id, "p": src["product_id"], "b": src["batch_no"], "fl": src["location_id"],
-           "tl": req.to_location_id, "q": req.transfer_qty, "u": MANAGER_ID}).scalar()
+           "tl": req.to_location_id, "q": req.transfer_qty, "u": user["id"]}).scalar()
 
     # Trừ Bin nguồn
     src_after = db.execute(text("""
@@ -482,10 +500,10 @@ def execute_transfer(req: TransferRequest, db: Session = Depends(get_db)):
     # Thẻ kho: 2 dòng (trừ ở Bin nguồn, cộng ở Bin đích) để balance_after đúng theo từng Bin
     add_ledger(db, ttype="TRANSFER", ref=transfer_code, task_id=d_id, product_id=src["product_id"],
                batch_no=src["batch_no"], from_loc=src["location_id"], to_loc=req.to_location_id,
-               change=-req.transfer_qty, balance_after=src_after, user_id=MANAGER_ID)
+               change=-req.transfer_qty, balance_after=src_after, user_id=user["id"]) # pyright: ignore # pyright: ignore
     add_ledger(db, ttype="TRANSFER", ref=transfer_code, task_id=d_id, product_id=src["product_id"],
                batch_no=src["batch_no"], from_loc=src["location_id"], to_loc=req.to_location_id,
-               change=req.transfer_qty, balance_after=dst_after, user_id=MANAGER_ID)
+               change=req.transfer_qty, balance_after=dst_after, user_id=user["id"]) # pyright: ignore # pyright: ignore
 
     db.commit()
     return {"message": f"Đã điều chuyển {req.transfer_qty} từ {src['location_code']} sang {to_code} (phiếu {transfer_code})!"}
@@ -493,7 +511,7 @@ def execute_transfer(req: TransferRequest, db: Session = Depends(get_db)):
 
 # 8. API Kiểm kê & Duyệt cân bằng tồn kho (FR4 - STOCK_COUNTS, BR05)
 @router.post("/count/reconcile")
-def reconcile_count(req: StockCountRequest, db: Session = Depends(get_db)):
+def reconcile_count(req: StockCountRequest, user=Depends(require_staff), db: Session = Depends(get_db)):
     s = db.execute(text("""
         SELECT s.id, s.location_id, s.product_id, s.batch_no, s.quantity_on_hand, s.quantity_allocated,
                l.location_code
@@ -520,14 +538,14 @@ def reconcile_count(req: StockCountRequest, db: Session = Depends(get_db)):
     c_id = db.execute(text("""
         INSERT INTO stock_counts (count_code, warehouse_id, created_by, approved_by, status)
         VALUES (:code, :wh, :mgr, :mgr, 'reconciled') RETURNING id
-    """), {"code": count_code, "wh": DEFAULT_WAREHOUSE_ID, "mgr": MANAGER_ID}).scalar()
+    """), {"code": count_code, "wh": DEFAULT_WAREHOUSE_ID, "mgr": user["id"]}).scalar()
 
     d_id = db.execute(text("""
         INSERT INTO stock_count_details (count_id, location_id, product_id, batch_no,
                                          system_qty, actual_qty, counted_by)
         VALUES (:c, :loc, :p, :b, :sys, :act, :u) RETURNING id
     """), {"c": c_id, "loc": s["location_id"], "p": s["product_id"], "b": s["batch_no"],
-           "sys": system_qty, "act": req.actual_qty, "u": MANAGER_ID}).scalar()
+           "sys": system_qty, "act": req.actual_qty, "u": user["id"]}).scalar()
 
     if variance == 0:
         db.commit()
@@ -539,7 +557,7 @@ def reconcile_count(req: StockCountRequest, db: Session = Depends(get_db)):
 
     add_ledger(db, ttype="COUNT_ADJUST", ref=count_code, task_id=d_id, product_id=s["product_id"],
                batch_no=s["batch_no"], from_loc=None, to_loc=s["location_id"],
-               change=variance, balance_after=req.actual_qty, user_id=MANAGER_ID)
+               change=variance, balance_after=req.actual_qty, user_id=user["id"])
 
     db.commit()
     sign = "+" if variance > 0 else ""

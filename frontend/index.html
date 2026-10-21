@@ -5,240 +5,369 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WMS Desktop - Quản Lý Kho Thông Minh (FEFO & QR)</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/js/auth.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
 
-    <header class="bg-slate-900 text-white px-6 py-4 shadow-md flex justify-between items-center">
-        <div>
-            <h1 class="text-xl font-bold tracking-wide text-emerald-400">📦 HỆ THỐNG QUẢN LÝ KHO WMS (CHUẨN FEFO & QR BIN)</h1>
-            <p class="text-xs text-slate-400">Giao diện Điều hành Thủ kho (Web PC) • Đồng bộ thời gian thực với Mobile</p>
-        </div>
-        <div class="flex items-center gap-3">
-            <span class="bg-slate-800 text-xs px-3 py-1.5 rounded-full border border-slate-700">👤 Thủ kho: Nguyễn Văn A</span>
-            <a href="/mobile" target="_blank" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
-                📱 Mở màn hình Công nhân (Mobile QR)
-            </a>
-        </div>
-    </header>
-
-    <main class="max-w-7xl mx-auto p-6 space-y-6">
-
-        <!-- Thông báo trạng thái chung -->
-        <div id="action-msg" class="hidden p-4 rounded-xl text-sm font-bold shadow-sm"></div>
-
-        <!-- 1. Hàng 4 Thẻ KPI -->
-        <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-blue-600">
-                <p class="text-xs uppercase font-bold text-slate-400">Tồn Kho Thực Tế (On-Hand)</p>
-                <p id="kpi-onhand" class="text-3xl font-extrabold text-slate-800 mt-1">0</p>
-                <p class="text-xs text-slate-500 mt-1">Tổng hàng vật lý đang trên kệ</p>
+    <!-- ========================================================== -->
+    <!-- 2. GIAO DIỆN CHÍNH WMS (Chỉ hiện sau khi đăng nhập thành công) -->
+    <!-- ========================================================== -->
+    <div id="main-app" class="hidden flex-1 flex flex-col">
+        <header class="bg-slate-900 text-white px-6 py-4 shadow-md flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold tracking-wide text-emerald-400">📦 HỆ THỐNG QUẢN LÝ KHO WMS (CHUẨN FEFO & QR BIN)</h1>
+                <p class="text-xs text-slate-400">Giao diện Điều hành Thủ kho (Web PC) • Đồng bộ thời gian thực với Mobile</p>
             </div>
-            <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-amber-500">
-                <p class="text-xs uppercase font-bold text-slate-400">Đang Giữ Chỗ (Allocated)</p>
-                <p id="kpi-allocated" class="text-3xl font-extrabold text-amber-600 mt-1">0</p>
-                <p class="text-xs text-slate-500 mt-1">Đã khóa chờ công nhân ra lấy</p>
+            <div class="flex items-center gap-3">
+                <span id="user-display" class="bg-slate-800 text-xs px-3 py-1.5 rounded-full border border-slate-700 font-semibold">👤 ...</span>
+                <button onclick="handleLogout()" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1">
+                    <i class="fa-solid fa-right-from-bracket"></i> Đăng xuất
+                </button>
+                <a href="/mobile" target="_blank" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
+                    📱 Mở màn hình Công nhân (Mobile QR)
+                </a>
             </div>
-            <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-emerald-600">
-                <p class="text-xs uppercase font-bold text-slate-400">Tồn Khả Dụng (Available)</p>
-                <p id="kpi-available" class="text-3xl font-extrabold text-emerald-600 mt-1">0</p>
-                <p class="text-xs text-slate-500 mt-1">= Thực tế trừ Giữ chỗ</p>
-            </div>
-            <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-rose-600">
-                <p class="text-xs uppercase font-bold text-slate-400">Cảnh Báo Ngưỡng & Cận Date</p>
-                <p id="kpi-alerts" class="text-3xl font-extrabold text-rose-600 mt-1">0</p>
-                <p class="text-xs text-slate-500 mt-1">Cần ưu tiên xuất FEFO / Nhập thêm</p>
-            </div>
-        </section>
+        </header>
 
-        <!-- 2. Lập Phiếu Nhập - Xuất - Điều Chuyển - Kiểm Kê -->
-        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <!-- 2.1 Nhập Kho -->
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                <h2 class="text-sm font-bold text-blue-700 mb-2">📥 1. Phiếu Nhập Kho (Putaway)</h2>
-                <form id="form-inbound" class="space-y-2 text-xs">
-                    <div>
-                        <label class="font-semibold text-slate-600">Sản phẩm:</label>
-                        <select id="in-product" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
+        <main class="max-w-7xl mx-auto p-6 space-y-6 flex-1 w-full">
+
+            <!-- Thông báo trạng thái chung -->
+            <div id="action-msg" class="hidden p-4 rounded-xl text-sm font-bold shadow-sm"></div>
+
+            <!-- 1. Hàng 4 Thẻ KPI -->
+            <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-blue-600">
+                    <p class="text-xs uppercase font-bold text-slate-400">Tồn Kho Thực Tế (On-Hand)</p>
+                    <p id="kpi-onhand" class="text-3xl font-extrabold text-slate-800 mt-1">0</p>
+                    <p class="text-xs text-slate-500 mt-1">Tổng hàng vật lý đang trên kệ</p>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-amber-500">
+                    <p class="text-xs uppercase font-bold text-slate-400">Đang Giữ Chỗ (Allocated)</p>
+                    <p id="kpi-allocated" class="text-3xl font-extrabold text-amber-600 mt-1">0</p>
+                    <p class="text-xs text-slate-500 mt-1">Đã khóa chờ công nhân ra lấy</p>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-emerald-600">
+                    <p class="text-xs uppercase font-bold text-slate-400">Tồn Khả Dụng (Available)</p>
+                    <p id="kpi-available" class="text-3xl font-extrabold text-emerald-600 mt-1">0</p>
+                    <p class="text-xs text-slate-500 mt-1">= Thực tế trừ Giữ chỗ</p>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-rose-600">
+                    <p class="text-xs uppercase font-bold text-slate-400">Cảnh Báo Ngưỡng & Cận Date</p>
+                    <p id="kpi-alerts" class="text-3xl font-extrabold text-rose-600 mt-1">0</p>
+                    <p class="text-xs text-slate-500 mt-1">Cần ưu tiên xuất FEFO / Nhập thêm</p>
+                </div>
+            </section>
+
+            <!-- 2. Lập Phiếu Nhập - Xuất - Điều Chuyển - Kiểm Kê -->
+            <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- 2.1 Nhập Kho -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                    <h2 class="text-sm font-bold text-blue-700 mb-2">📥 1. Phiếu Nhập Kho (Putaway)</h2>
+                    <form id="form-inbound" class="space-y-2 text-xs">
                         <div>
-                            <label class="font-semibold text-slate-600">Số Lô:</label>
-                            <input type="text" id="in-batch" value="LOT-NEW-01" required class="w-full mt-0.5 p-2 border rounded-lg">
+                            <label class="font-semibold text-slate-600">Nhà cung cấp:</label>
+                            <select id="in-partner" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
                         </div>
                         <div>
-                            <label class="font-semibold text-slate-600">Số lượng:</label>
-                            <input type="number" id="in-qty" value="25" min="1" required class="w-full mt-0.5 p-2 border rounded-lg">
+                            <label class="font-semibold text-slate-600">Sản phẩm:</label>
+                            <select id="in-product" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
                         </div>
-                    </div>
-                    <div>
-                        <label class="font-semibold text-slate-600">Hạn sử dụng:</label>
-                        <input type="date" id="in-expiry" required class="w-full mt-0.5 p-2 border rounded-lg">
-                    </div>
-                    <div>
-                        <label class="font-semibold text-slate-600">Ô Kệ (Bin) chỉ định:</label>
-                        <select id="in-location" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
-                    </div>
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition">
-                        ✓ Duyệt Nhập & Gửi Mobile
-                    </button>
-                </form>
-            </div>
-
-            <!-- 2.2 Xuất Kho FEFO -->
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
-                <div>
-                    <h2 class="text-sm font-bold text-amber-700 mb-2">📤 2. Đơn Xuất Kho (FEFO)</h2>
-                    <p class="text-[11px] text-slate-500 mb-2">Tự động chọn lô cận date nhất, khóa <code>Allocated</code> và đẩy lệnh xuống điện thoại.</p>
-                    <form id="form-outbound" class="space-y-2 text-xs">
-                        <div>
-                            <label class="font-semibold text-slate-600">Sản phẩm xuất:</label>
-                            <select id="out-product" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="font-semibold text-slate-600">Số Lô:</label>
+                                <input type="text" id="in-batch" value="LOT-NEW-01" required class="w-full mt-0.5 p-2 border rounded-lg">
+                            </div>
+                            <div>
+                                <label class="font-semibold text-slate-600">Số lượng:</label>
+                                <input type="number" id="in-qty" value="25" min="1" required class="w-full mt-0.5 p-2 border rounded-lg">
+                            </div>
                         </div>
                         <div>
-                            <label class="font-semibold text-slate-600">Số lượng cần xuất:</label>
-                            <input type="number" id="out-qty" value="15" min="1" required class="w-full mt-0.5 p-2 border rounded-lg">
+                            <label class="font-semibold text-slate-600">Hạn sử dụng:</label>
+                            <input type="date" id="in-expiry" required class="w-full mt-0.5 p-2 border rounded-lg">
                         </div>
-                        <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded-lg transition mt-2">
-                            ⚡ Duyệt Xuất & Khóa FEFO
+                        <div>
+                            <label class="font-semibold text-slate-600">Ô Kệ (Bin) chỉ định:</label>
+                            <select id="in-location" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition">
+                            ✓ Duyệt Nhập & Gửi Mobile
                         </button>
                     </form>
                 </div>
-            </div>
 
-            <!-- 2.3 Điều Chuyển Nội Bộ -->
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
-                <div>
-                    <h2 class="text-sm font-bold text-indigo-700 mb-2">🔄 3. Điều Chuyển Giữa Các Bin</h2>
-                    <form id="form-transfer" class="space-y-2 text-xs">
-                        <div>
-                            <label class="font-semibold text-slate-600">Chọn Lô & Kệ nguồn:</label>
-                            <select id="tf-stock" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
+                <!-- 2.2 Xuất Kho FEFO -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                    <div>
+                        <h2 class="text-sm font-bold text-amber-700 mb-2">📤 2. Đơn Xuất Kho (FEFO)</h2>
+                        <p class="text-[11px] text-slate-500 mb-2">Tự động chọn lô cận date nhất, khóa <code>Allocated</code> và đẩy lệnh xuống điện thoại.</p>
+                        <form id="form-outbound" class="space-y-2 text-xs">
+                            <div>
+                                <label class="font-semibold text-slate-600">Khách hàng:</label>
+                                <select id="out-partner" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
+                            </div>
+                            <div>
+                                <label class="font-semibold text-slate-600">Sản phẩm xuất:</label>
+                                <select id="out-product" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
+                            </div>
+                            <div>
+                                <label class="font-semibold text-slate-600">Số lượng cần xuất:</label>
+                                <input type="number" id="out-qty" value="15" min="1" required class="w-full mt-0.5 p-2 border rounded-lg">
+                            </div>
+                            <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded-lg transition mt-2">
+                                ⚡ Duyệt Xuất & Khóa FEFO
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 2.3 Điều Chuyển Nội Bộ -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                    <div>
+                        <h2 class="text-sm font-bold text-indigo-700 mb-2">🔄 3. Điều Chuyển Giữa Các Bin</h2>
+                        <form id="form-transfer" class="space-y-2 text-xs">
+                            <div>
+                                <label class="font-semibold text-slate-600">Chọn Lô & Kệ nguồn:</label>
+                                <select id="tf-stock" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
+                            </div>
+                            <div>
+                                <label class="font-semibold text-slate-600">Chuyển sang Ô Kệ đích:</label>
+                                <select id="tf-location" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
+                            </div>
+                            <div>
+                                <label class="font-semibold text-slate-600">Số lượng chuyển:</label>
+                                <input type="number" id="tf-qty" value="10" min="1" required class="w-full mt-0.5 p-2 border rounded-lg">
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition">
+                                ⇄ Thực Hiện Điều Chuyển
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 2.4 Kiểm Kê & Đối Chiếu -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                    <div>
+                        <h2 class="text-sm font-bold text-emerald-700 mb-2">🔍 4. Kiểm Kê & Đối Chiếu</h2>
+                        <p class="text-[11px] text-slate-500 mb-2">Nhập số thực đếm để tính chênh lệch (<code>variance_qty</code>) và cân bằng kho.</p>
+                        <form id="form-count" class="space-y-2 text-xs">
+                            <div>
+                                <label class="font-semibold text-slate-600">Chọn Lô & Ô Kệ kiểm đếm:</label>
+                                <select id="cnt-stock" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
+                            </div>
+                            <div>
+                                <label class="font-semibold text-slate-600">Số lượng thực đếm (Actual):</label>
+                                <input type="number" id="cnt-actual" value="38" min="0" required class="w-full mt-0.5 p-2 border rounded-lg">
+                            </div>
+                            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg transition">
+                                ⚖️ Duyệt Cân Bằng Kiểm Kê
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2b. Nhân sự & Duyệt tài khoản (FR0) -->
+            <section class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="text-base font-bold text-slate-800 mb-1">👥 Quản Lý Nhân Sự & Duyệt Tài Khoản</h2>
+                <p id="users-hint" class="text-xs text-slate-500 mb-3"></p>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left border-collapse">
+                        <thead><tr class="bg-slate-100 text-slate-600 border-b">
+                            <th class="p-2">Tài khoản</th><th class="p-2">Vai trò</th><th class="p-2">Trạng thái</th><th class="p-2">Thao tác</th>
+                        </tr></thead>
+                        <tbody id="table-users" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 2c. Danh mục động (FR1) -->
+            <section class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                <h2 class="text-base font-bold text-slate-800">🗂️ Quản Lý Danh Mục (Sản phẩm • Ô kệ • Đối tác)</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 text-xs">
+                    <form id="form-product" class="border rounded-lg p-3 space-y-2 bg-slate-50">
+                        <h3 class="font-bold text-blue-700">+ Sản phẩm mới</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input id="pr-sku" required placeholder="Mã SKU" class="p-2 border rounded-lg">
+                            <input id="pr-barcode" required placeholder="Mã vạch" class="p-2 border rounded-lg">
                         </div>
-                        <div>
-                            <label class="font-semibold text-slate-600">Chuyển sang Ô Kệ đích:</label>
-                            <select id="tf-location" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
+                        <input id="pr-name" required placeholder="Tên hàng hóa" class="w-full p-2 border rounded-lg">
+                        <div class="grid grid-cols-2 gap-2">
+                            <input id="pr-unit" required placeholder="Đơn vị (Thùng...)" class="p-2 border rounded-lg">
+                            <input id="pr-weight" type="number" step="0.01" min="0.01" required placeholder="Kg / đơn vị" class="p-2 border rounded-lg">
+                            <input id="pr-min" type="number" min="0" required placeholder="Tồn tối thiểu" class="p-2 border rounded-lg">
+                            <input id="pr-max" type="number" min="0" required placeholder="Tồn tối đa" class="p-2 border rounded-lg">
                         </div>
-                        <div>
-                            <label class="font-semibold text-slate-600">Số lượng chuyển:</label>
-                            <input type="number" id="tf-qty" value="10" min="1" required class="w-full mt-0.5 p-2 border rounded-lg">
+                        <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg">Lưu Sản Phẩm</button>
+                    </form>
+
+                    <form id="form-location" class="border rounded-lg p-3 space-y-2 bg-slate-50">
+                        <h3 class="font-bold text-emerald-700">+ Ô kệ (Bin) mới</h3>
+                        <div class="grid grid-cols-5 gap-1">
+                            <input id="lc-zone" required placeholder="Khu Z01" class="p-2 border rounded-lg">
+                            <input id="lc-aisle" required placeholder="Dãy A01" class="p-2 border rounded-lg">
+                            <input id="lc-rack" required placeholder="Kệ R01" class="p-2 border rounded-lg">
+                            <input id="lc-level" required placeholder="Tầng L1" class="p-2 border rounded-lg">
+                            <input id="lc-bin" required placeholder="Ô B01" class="p-2 border rounded-lg">
                         </div>
-                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition">
-                            ⇄ Thực Hiện Điều Chuyển
-                        </button>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input id="lc-cap" type="number" step="0.01" min="1" required placeholder="Sức chứa tối đa (kg)" class="p-2 border rounded-lg">
+                            <select id="lc-status" class="p-2 border rounded-lg bg-white">
+                                <option value="active">active</option><option value="maintenance">maintenance</option><option value="locked">locked</option>
+                            </select>
+                        </div>
+                        <p class="text-[11px] text-slate-500">Mã ô kệ tự sinh dạng WH01-Z01-A01-R01-L1-B01 và vẽ QR ở mục Sơ đồ ô kệ.</p>
+                        <button class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg">Lưu Ô Kệ</button>
+                    </form>
+
+                    <form id="form-partner" class="border rounded-lg p-3 space-y-2 bg-slate-50">
+                        <h3 class="font-bold text-amber-700">+ Đối tác mới</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input id="pa-code" required placeholder="Mã đối tác" class="p-2 border rounded-lg">
+                            <select id="pa-type" class="p-2 border rounded-lg bg-white">
+                                <option value="supplier">Nhà cung cấp</option><option value="customer">Khách hàng</option>
+                            </select>
+                        </div>
+                        <input id="pa-name" required placeholder="Tên đối tác" class="w-full p-2 border rounded-lg">
+                        <div class="grid grid-cols-2 gap-2">
+                            <input id="pa-phone" placeholder="Điện thoại" class="p-2 border rounded-lg">
+                            <input id="pa-address" placeholder="Địa chỉ" class="p-2 border rounded-lg">
+                        </div>
+                        <button class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded-lg">Lưu Đối Tác</button>
                     </form>
                 </div>
-            </div>
 
-            <!-- 2.4 Kiểm Kê & Đối Chiếu -->
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
-                <div>
-                    <h2 class="text-sm font-bold text-emerald-700 mb-2">🔍 4. Kiểm Kê & Đối Chiếu</h2>
-                    <p class="text-[11px] text-slate-500 mb-2">Nhập số thực đếm để tính chênh lệch (<code>variance_qty</code>) và cân bằng kho.</p>
-                    <form id="form-count" class="space-y-2 text-xs">
-                        <div>
-                            <label class="font-semibold text-slate-600">Chọn Lô & Ô Kệ kiểm đếm:</label>
-                            <select id="cnt-stock" class="w-full mt-0.5 p-2 border rounded-lg bg-slate-50"></select>
-                        </div>
-                        <div>
-                            <label class="font-semibold text-slate-600">Số lượng thực đếm (Actual):</label>
-                            <input type="number" id="cnt-actual" value="38" min="0" required class="w-full mt-0.5 p-2 border rounded-lg">
-                        </div>
-                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg transition">
-                            ⚖️ Duyệt Cân Bằng Kiểm Kê
-                        </button>
-                    </form>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
+                    <div class="overflow-x-auto max-h-64 overflow-y-auto">
+                        <h3 class="font-bold text-slate-700 mb-1">Danh sách sản phẩm</h3>
+                        <table class="w-full text-left border-collapse">
+                            <thead><tr class="bg-slate-100 text-slate-600 border-b"><th class="p-2">SKU / Tên</th><th class="p-2 text-right">Min/Max</th><th class="p-2">Trạng thái</th></tr></thead>
+                            <tbody id="table-products" class="divide-y"></tbody>
+                        </table>
+                    </div>
+                    <div class="overflow-x-auto max-h-64 overflow-y-auto">
+                        <h3 class="font-bold text-slate-700 mb-1">Trạng thái ô kệ</h3>
+                        <table class="w-full text-left border-collapse">
+                            <thead><tr class="bg-slate-100 text-slate-600 border-b"><th class="p-2">Mã ô</th><th class="p-2 text-right">Tối đa (kg)</th><th class="p-2">Trạng thái</th></tr></thead>
+                            <tbody id="table-locations" class="divide-y"></tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <!-- 3. Khu vực Cảnh báo đỏ & Biểu đồ -->
-        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-rose-200">
-                <h2 class="text-base font-bold text-rose-700 mb-3">🚨 Cảnh Báo Tồn Dưới Định Mức & Hàng Cận Date (FEFO)</h2>
-                <div id="alerts-container" class="space-y-2 text-xs max-h-60 overflow-y-auto"></div>
-            </div>
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                <h2 class="text-base font-bold text-slate-700 mb-3">📊 Biểu Đồ Tồn Thực Tế & Khả Dụng Theo Lô Hàng</h2>
-                <canvas id="stockChart" height="125"></canvas>
-            </div>
-        </section>
-
-        <!-- 4. Sơ đồ Kệ & Mã QR Bin -->
-        <section class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-            <div class="flex justify-between items-center mb-4">
-                <div>
-                    <h2 class="text-base font-bold text-slate-800">🏷️ Sơ Đồ Ô Kệ (Bin Locations) & Mã QR Định Danh</h2>
-                    <p class="text-xs text-slate-500">Đưa Camera điện thoại quét trực tiếp các mã QR dưới đây để xác nhận vị trí kệ</p>
+            <!-- 3. Khu vực Cảnh báo đỏ & Biểu đồ -->
+            <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-rose-200">
+                    <h2 class="text-base font-bold text-rose-700 mb-3">🚨 Cảnh Báo Tồn Dưới Định Mức & Hàng Cận Date (FEFO)</h2>
+                    <div id="alerts-container" class="space-y-2 text-xs max-h-60 overflow-y-auto"></div>
                 </div>
-                <button onclick="window.print()" class="bg-slate-800 text-white text-xs px-3 py-2 rounded-lg hover:bg-slate-700">🖨️ In Tem QR Kệ</button>
-            </div>
-            <div id="locations-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4"></div>
-        </section>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <h2 class="text-base font-bold text-slate-700 mb-3">📊 Biểu Đồ Tồn Thực Tế & Khả Dụng Theo Lô Hàng</h2>
+                    <canvas id="stockChart" height="125"></canvas>
+                </div>
+            </section>
 
-        <!-- 5. Bảng Tồn Kho, Báo Cáo Chênh Lệch Kiểm Kê & Sổ Thẻ Kho -->
-        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
-                <h2 class="text-sm font-bold text-slate-800 mb-3">📋 1. Tồn Kho Chi Tiết (Chuẩn FEFO)</h2>
-                <table class="w-full text-xs text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-100 text-slate-600 border-b">
-                            <th class="p-2">Ô Kệ / Lô</th>
-                            <th class="p-2">Sản phẩm</th>
-                            <th class="p-2 text-right">Thực</th>
-                            <th class="p-2 text-right">Giữ</th>
-                            <th class="p-2 text-right">Khả dụng</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-stocks" class="divide-y"></tbody>
-                </table>
-            </div>
+            <!-- 4. Sơ đồ Kệ & Mã QR Bin -->
+            <section class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-800">🏷️ Sơ Đồ Ô Kệ (Bin Locations) & Mã QR Định Danh</h2>
+                        <p class="text-xs text-slate-500">Đưa Camera điện thoại quét trực tiếp các mã QR dưới đây để xác nhận vị trí kệ</p>
+                    </div>
+                    <button onclick="window.print()" class="bg-slate-800 text-white text-xs px-3 py-2 rounded-lg hover:bg-slate-700">🖨️ In Tem QR Kệ</button>
+                </div>
+                <div id="locations-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4"></div>
+            </section>
 
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
-                <h2 class="text-sm font-bold text-emerald-800 mb-3">⚖️ 2. Báo Cáo Chênh Lệch Kiểm Kê</h2>
-                <table class="w-full text-xs text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-100 text-slate-600 border-b">
-                            <th class="p-2">Mã Phiếu / Kệ</th>
-                            <th class="p-2">Sản phẩm / Lô</th>
-                            <th class="p-2 text-right">Hệ thống</th>
-                            <th class="p-2 text-right">Thực đếm</th>
-                            <th class="p-2 text-right">Lệch</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-counts" class="divide-y"></tbody>
-                </table>
-            </div>
+            <!-- 5. Bảng Tồn Kho, Báo Cáo Chênh Lệch Kiểm Kê & Sổ Thẻ Kho -->
+            <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+                    <h2 class="text-sm font-bold text-slate-800 mb-3">📋 1. Tồn Kho Chi Tiết (Chuẩn FEFO)</h2>
+                    <table class="w-full text-xs text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 border-b">
+                                <th class="p-2">Ô Kệ / Lô</th>
+                                <th class="p-2">Sản phẩm</th>
+                                <th class="p-2 text-right">Thực</th>
+                                <th class="p-2 text-right">Giữ</th>
+                                <th class="p-2 text-right">Khả dụng</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-stocks" class="divide-y"></tbody>
+                    </table>
+                </div>
 
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
-                <h2 class="text-sm font-bold text-slate-800 mb-3">📜 3. Sổ Thẻ Kho (Stock Ledger)</h2>
-                <table class="w-full text-xs text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-100 text-slate-600 border-b">
-                            <th class="p-2">Loại / Phiếu</th>
-                            <th class="p-2">Hàng / Lô</th>
-                            <th class="p-2">Vị trí Bin</th>
-                            <th class="p-2 text-right">Biến động</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-ledger" class="divide-y"></tbody>
-                </table>
-            </div>
-        </section>
-    </main>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+                    <h2 class="text-sm font-bold text-emerald-800 mb-3">⚖️ 2. Báo Cáo Chênh Lệch Kiểm Kê</h2>
+                    <table class="w-full text-xs text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 border-b">
+                                <th class="p-2">Mã Phiếu / Kệ</th>
+                                <th class="p-2">Sản phẩm / Lô</th>
+                                <th class="p-2 text-right">Hệ thống</th>
+                                <th class="p-2 text-right">Thực đếm</th>
+                                <th class="p-2 text-right">Lệch</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-counts" class="divide-y"></tbody>
+                    </table>
+                </div>
 
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+                    <h2 class="text-sm font-bold text-slate-800 mb-3">📜 3. Sổ Thẻ Kho (Stock Ledger)</h2>
+                    <table class="w-full text-xs text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 border-b">
+                                <th class="p-2">Loại / Phiếu</th>
+                                <th class="p-2">Hàng / Lô</th>
+                                <th class="p-2">Vị trí Bin</th>
+                                <th class="p-2 text-right">Biến động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-ledger" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- 3. XỬ LÝ JAVASCRIPT ĐĂNG NHẬP VÀ LOGIC DASHBOARD WMS -->
+    <!-- ========================================================== -->
     <script>
         let chartInstance = null;
-        let initializedSelects = false;
         let lastLocationsSig = '';
+        let lastUsersSig = '';
+        let lastMasterSig = '';
+        let me = null;
 
-        // Chống chèn HTML/JS từ dữ liệu người dùng nhập (số lô, tên hàng...)
+        // Bắt buộc đăng nhập bằng tài khoản thật (token do backend cấp)
+        window.addEventListener('DOMContentLoaded', () => {
+            me = requireLogin(['admin', 'manager']);
+            if (!me) return;
+            document.getElementById('main-app').classList.remove('hidden');
+            document.getElementById('user-display').textContent = `👤 ${ROLE_LABEL[me.role] || me.role}: ${me.full_name}`;
+            document.getElementById('users-hint').textContent = me.role === 'admin'
+                ? 'Admin duyệt/khóa được cả Thủ kho và Công nhân, và có thể đổi vai trò.'
+                : 'Thủ kho chỉ duyệt/khóa được tài khoản Công nhân.';
+            loadDashboard();
+            loadUsers();
+        });
+
+        function handleLogout() { wmsLogout(); }
+
+        // Chống chèn HTML/JS từ dữ liệu người dùng nhập
         function esc(v) {
             return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         }
 
-        // FastAPI trả detail là chuỗi (lỗi nghiệp vụ) hoặc mảng (lỗi 422 validate)
         function errText(data) {
             if (!data) return 'Có lỗi xảy ra';
             if (data.message) return data.message;
@@ -246,18 +375,35 @@
             return data.detail || 'Có lỗi xảy ra';
         }
 
-        async function postJSON(url, payload) {
+        // Gửi JSON kèm token; trả về true nếu thành công
+        async function sendJSON(url, payload, method = 'POST') {
+            let ok = false;
             try {
-                const res = await fetch(url, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                const res = await apiFetch(url, {
+                    method, headers: { 'Content-Type': 'application/json' },
+                    body: payload === undefined ? undefined : JSON.stringify(payload)
                 });
                 let data = null;
                 try { data = await res.json(); } catch (_) {}
+                ok = res.ok;
                 showMsg(errText(data), !res.ok);
             } catch (e) {
-                showMsg('Không kết nối được backend. Hãy kiểm tra FastAPI!', true);
+                if (e.message !== 'unauthorized') showMsg('Không kết nối được backend. Hãy kiểm tra FastAPI!', true);
             }
             loadDashboard();
+            loadUsers();
+            return ok;
+        }
+        const postJSON = sendJSON;
+
+        // NFR1: đổ lại <option> nhưng giữ nguyên giá trị người dùng đang chọn; chỉ đụng DOM khi danh sách thật sự đổi
+        function fillSelect(id, optionsHtml) {
+            const sel = document.getElementById(id);
+            if (sel.dataset.sig === optionsHtml) return;
+            const keep = sel.value;
+            sel.innerHTML = optionsHtml;
+            sel.dataset.sig = optionsHtml;
+            if (keep && [...sel.options].some(o => o.value === keep)) sel.value = keep;
         }
 
         const defaultDate = new Date();
@@ -265,35 +411,36 @@
         document.getElementById('in-expiry').value = defaultDate.toISOString().split('T')[0];
 
         async function loadDashboard() {
+            if (!me) return;
+
             try {
-                const res = await fetch('/api/dashboard');
+                const res = await apiFetch('/api/dashboard');
                 const data = await res.json();
+                if (!res.ok) throw new Error(errText(data));
 
                 document.getElementById('kpi-onhand').textContent = data.kpi.total_on_hand;
                 document.getElementById('kpi-allocated').textContent = data.kpi.total_allocated;
                 document.getElementById('kpi-available').textContent = data.kpi.total_available;
                 document.getElementById('kpi-alerts').textContent = data.low_stock_alerts.length + data.expiring_alerts.length + (data.over_stock_alerts || []).length;
 
-                if (!initializedSelects) {
-                    const prodOptions = data.products.map(p => `<option value="${p.id}">${esc(p.sku)} - ${esc(p.product_name)}</option>`).join('');
-                    const locOptions = data.locations.map(l => `<option value="${l.id}">${esc(l.location_code)}${l.status !== 'active' ? ' (' + esc(l.status) + ')' : ''}</option>`).join('');
-                    document.getElementById('in-product').innerHTML = prodOptions;
-                    document.getElementById('out-product').innerHTML = prodOptions;
-                    document.getElementById('in-location').innerHTML = locOptions;
-                    document.getElementById('tf-location').innerHTML = locOptions;
-                    initializedSelects = true;
-                }
+                const activeProducts = data.products.filter(p => p.is_active);
+                const prodOptions = activeProducts.map(p => `<option value="${p.id}">${esc(p.sku)} | ${esc(p.product_name)}</option>`).join('');
+                const locOptions = data.locations.map(l => `<option value="${l.id}">${esc(l.location_code)}${l.status !== 'active' ? ' (' + esc(l.status) + ')' : ''}</option>`).join('');
+                const supOptions = data.partners.filter(p => p.type === 'supplier').map(p => `<option value="${p.id}">${esc(p.partner_name)}</option>`).join('');
+                const cusOptions = data.partners.filter(p => p.type === 'customer').map(p => `<option value="${p.id}">${esc(p.partner_name)}</option>`).join('');
+                fillSelect('in-product', prodOptions);
+                fillSelect('out-product', prodOptions);
+                fillSelect('in-location', locOptions);
+                fillSelect('tf-location', locOptions);
+                fillSelect('in-partner', supOptions);
+                fillSelect('out-partner', cusOptions);
 
-                // Cập nhật dropdown lô tồn kho cho Điều chuyển & Kiểm kê
+                renderMaster(data);
+
                 const stockOptions = data.stocks.map(s => `<option value="${s.id}">${esc(s.location_code)} | ${esc(s.batch_no)} (Tồn: ${s.quantity_on_hand}, khả dụng: ${s.quantity_available})</option>`).join('');
-                ['tf-stock', 'cnt-stock'].forEach(id => {
-                    const sel = document.getElementById(id);
-                    const keep = sel.value;               // giữ lựa chọn đang chọn dở
-                    sel.innerHTML = stockOptions;
-                    if (keep && [...sel.options].some(o => o.value === keep)) sel.value = keep;
-                });
+                fillSelect('tf-stock', stockOptions);
+                fillSelect('cnt-stock', stockOptions);
 
-                // Hiển thị Cảnh báo đỏ (FEFO & Chạm đáy)
                 const alertsHtml = [];
                 data.expiring_alerts.forEach(a => {
                     alertsHtml.push(`<div class="p-2.5 bg-amber-50 border-l-4 border-amber-500 rounded flex justify-between items-center">
@@ -303,19 +450,18 @@
                 });
                 data.low_stock_alerts.forEach(a => {
                     alertsHtml.push(`<div class="p-2.5 bg-rose-50 border-l-4 border-rose-600 rounded flex justify-between items-center">
-                        <div><b class="text-rose-700">[CHẠM ĐÁY TỒN]</b> ${esc(a.sku)} - ${esc(a.product_name)}</div>
+                        <div><b class="text-rose-700">[CHẠM ĐÁY TỒN]</b> ${esc(a.sku)} | ${esc(a.product_name)}</div>
                         <span class="bg-rose-200 text-rose-900 font-bold px-2 py-1 rounded">Khả dụng: ${a.total_available} / Min: ${a.min_safety_stock}</span>
                     </div>`);
                 });
                 (data.over_stock_alerts || []).forEach(a => {
                     alertsHtml.push(`<div class="p-2.5 bg-violet-50 border-l-4 border-violet-600 rounded flex justify-between items-center">
-                        <div><b class="text-violet-700">[VƯỢT ĐỊNH MỨC]</b> ${esc(a.sku)} - ${esc(a.product_name)}</div>
+                        <div><b class="text-violet-700">[VƯỢT ĐỊNH MỨC]</b> ${esc(a.sku)} | ${esc(a.product_name)}</div>
                         <span class="bg-violet-200 text-violet-900 font-bold px-2 py-1 rounded">Tồn: ${a.total_on_hand} / Max: ${a.max_safety_stock}</span>
                     </div>`);
                 });
                 document.getElementById('alerts-container').innerHTML = alertsHtml.length ? alertsHtml.join('') : '<p class="text-emerald-600 font-semibold">✅ Tất cả mặt hàng đều trong ngưỡng an toàn!</p>';
 
-                // Vẽ Sơ đồ Kệ & QR Code (chỉ vẽ lại khi dữ liệu thay đổi)
                 const locSig = JSON.stringify(data.locations);
                 if (locSig !== lastLocationsSig) {
                     lastLocationsSig = locSig;
@@ -342,7 +488,6 @@
                     });
                 }
 
-                // Bảng tồn kho chi tiết
                 document.getElementById('table-stocks').innerHTML = data.stocks.map(s => `
                     <tr class="hover:bg-slate-50">
                         <td class="p-2"><span class="font-mono font-bold text-blue-700">${esc(s.location_code)}</span><br/><span class="text-[11px] text-slate-500">${esc(s.batch_no)} (HSD: ${esc(s.expiry_date)})</span></td>
@@ -353,7 +498,6 @@
                     </tr>
                 `).join('');
 
-                // Bảng Báo cáo chênh lệch kiểm kê
                 const counts = data.counts || [];
                 document.getElementById('table-counts').innerHTML = counts.length ? counts.map(c => `
                     <tr class="hover:bg-slate-50">
@@ -365,10 +509,8 @@
                     </tr>
                 `).join('') : `<tr><td colspan="5" class="p-4 text-center text-slate-400">Chưa có đợt kiểm kê nào. Hãy bấm nút Duyệt Cân Bằng Kiểm Kê ở trên!</td></tr>`;
 
-                // Bảng Thẻ kho
                 document.getElementById('table-ledger').innerHTML = data.ledger.map(lg => {
                     const isPlus = lg.quantity_change > 0;
-                    // Điều chuyển hiển thị "Bin nguồn → Bin đích"; còn lại hiển thị Bin phát sinh
                     const locTxt = (lg.from_loc && lg.to_loc) ? `${esc(lg.from_loc)}<br/>→ ${esc(lg.to_loc)}` : esc(lg.to_loc || lg.from_loc || '-');
                     return `<tr class="hover:bg-slate-50">
                         <td class="p-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800">${esc(lg.transaction_type)}</span><br/><b>${esc(lg.reference_code)}</b></td>
@@ -378,7 +520,6 @@
                     </tr>`;
                 }).join('');
 
-                // Biểu đồ
                 const labels = data.stocks.map(s => `${s.sku} (${s.batch_no})`);
                 const onHandData = data.stocks.map(s => s.quantity_on_hand);
                 const availData = data.stocks.map(s => s.quantity_available);
@@ -401,6 +542,85 @@
             }
         }
 
+        // Danh mục: chỉ vẽ lại khi dữ liệu đổi để không làm mất thao tác đang dở (NFR1)
+        function renderMaster(data) {
+            const sig = JSON.stringify([data.products, data.locations.map(l => [l.id, l.location_code, l.max_capacity_kg, l.status])]);
+            if (sig === lastMasterSig) return;
+            lastMasterSig = sig;
+            document.getElementById('table-products').innerHTML = data.products.map(p => `
+                <tr>
+                    <td class="p-2"><b>${esc(p.sku)}</b><br/><span class="text-slate-500">${esc(p.product_name)} • ${esc(p.unit)} • ${p.unit_weight_kg} kg</span></td>
+                    <td class="p-2 text-right">${p.min_safety_stock} / ${p.max_safety_stock}</td>
+                    <td class="p-2">
+                        <button onclick="toggleProduct(${p.id}, ${!p.is_active})" class="px-2 py-1 rounded font-bold ${p.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}">${p.is_active ? 'Đang dùng • Khóa' : 'Đã khóa • Mở'}</button>
+                    </td>
+                </tr>`).join('');
+            document.getElementById('table-locations').innerHTML = data.locations.map(l => `
+                <tr>
+                    <td class="p-2 font-mono">${esc(l.location_code)}</td>
+                    <td class="p-2 text-right">${l.max_capacity_kg}</td>
+                    <td class="p-2">
+                        <select onchange="setLocationStatus(${l.id}, this.value)" class="border rounded p-1 bg-white">
+                            ${['active', 'maintenance', 'locked'].map(st => `<option value="${st}" ${st === l.status ? 'selected' : ''}>${st}</option>`).join('')}
+                        </select>
+                    </td>
+                </tr>`).join('');
+        }
+
+        function toggleProduct(id, active) { sendJSON(`/api/products/${id}`, { is_active: active }, 'PUT'); }
+        function setLocationStatus(id, status) { sendJSON(`/api/locations/${id}`, { status }, 'PUT'); }
+
+        // ---- Nhân sự & duyệt tài khoản ----
+        async function loadUsers() {
+            if (!me) return;
+            try {
+                const res = await apiFetch('/api/users');
+                if (!res.ok) return;
+                const data = await res.json();
+                const sig = JSON.stringify(data.users);
+                if (sig === lastUsersSig) return;
+                lastUsersSig = sig;
+                const statusBadge = u => {
+                    if (u.approval_status === 'pending') return '<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">Chờ duyệt</span>';
+                    if (u.approval_status === 'rejected') return '<span class="px-2 py-0.5 rounded bg-rose-100 text-rose-700 font-bold">Đã từ chối</span>';
+                    return u.is_active ? '<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold">Hoạt động</span>'
+                                       : '<span class="px-2 py-0.5 rounded bg-slate-200 text-slate-600 font-bold">Đã khóa</span>';
+                };
+                const btn = (cls, label, action, id) => `<button onclick="userAction(${id}, '${action}')" class="px-2 py-1 rounded font-bold text-white ${cls}">${label}</button>`;
+                const actions = u => {
+                    const a = [];
+                    if (u.approval_status === 'pending') { a.push(btn('bg-emerald-600', 'Phê duyệt', 'approve', u.id), btn('bg-rose-600', 'Từ chối', 'reject', u.id)); }
+                    else if (u.approval_status === 'rejected') { a.push(btn('bg-emerald-600', 'Duyệt lại', 'approve', u.id)); }
+                    else if (u.is_active) { a.push(btn('bg-slate-700', 'Khóa', 'lock', u.id)); }
+                    else { a.push(btn('bg-blue-600', 'Mở khóa', 'unlock', u.id)); }
+                    if (me.role === 'admin' && u.approval_status === 'approved') {
+                        a.push(`<select onchange="changeRole(${u.id}, this.value)" class="border rounded p-1 bg-white">
+                            <option value="worker" ${u.role === 'worker' ? 'selected' : ''}>Công nhân</option>
+                            <option value="manager" ${u.role === 'manager' ? 'selected' : ''}>Thủ kho</option></select>`);
+                    }
+                    return a.join(' ');
+                };
+                document.getElementById('table-users').innerHTML = data.users.length ? data.users.map(u => `
+                    <tr>
+                        <td class="p-2"><b>${esc(u.username)}</b><br/><span class="text-slate-500">${esc(u.full_name)}</span></td>
+                        <td class="p-2">${esc(ROLE_LABEL[u.role] || u.role)}</td>
+                        <td class="p-2">${statusBadge(u)}</td>
+                        <td class="p-2 flex flex-wrap gap-1 items-center">${actions(u)}</td>
+                    </tr>`).join('') : '<tr><td colspan="4" class="p-4 text-center text-slate-400">Chưa có tài khoản nào cần quản lý.</td></tr>';
+            } catch (_) {}
+        }
+
+        async function userAction(id, action) {
+            await sendJSON(`/api/users/${id}/${action}`);
+            lastUsersSig = '';
+            loadUsers();
+        }
+        async function changeRole(id, role) {
+            await sendJSON(`/api/users/${id}/role`, { role });
+            lastUsersSig = '';
+            loadUsers();
+        }
+
         function showMsg(text, isError = false) {
             const box = document.getElementById('action-msg');
             box.className = `p-4 rounded-xl text-sm font-bold shadow-sm ${isError ? 'bg-rose-100 text-rose-800 border border-rose-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'}`;
@@ -411,7 +631,7 @@
         document.getElementById('form-inbound').addEventListener('submit', (e) => {
             e.preventDefault();
             postJSON('/api/inbound/create', {
-                supplier_id: 1,
+                supplier_id: parseInt(document.getElementById('in-partner').value),
                 product_id: parseInt(document.getElementById('in-product').value),
                 batch_no: document.getElementById('in-batch').value.trim(),
                 expiry_date: document.getElementById('in-expiry').value,
@@ -423,7 +643,7 @@
         document.getElementById('form-outbound').addEventListener('submit', (e) => {
             e.preventDefault();
             postJSON('/api/outbound/create', {
-                customer_id: 3,
+                customer_id: parseInt(document.getElementById('out-partner').value),
                 product_id: parseInt(document.getElementById('out-product').value),
                 requested_qty: parseInt(document.getElementById('out-qty').value)
             });
@@ -446,8 +666,44 @@
             });
         });
 
-        loadDashboard();
-        setInterval(loadDashboard, 5000);
+
+        document.getElementById('form-product').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const ok = await sendJSON('/api/products', {
+                sku: document.getElementById('pr-sku').value, barcode: document.getElementById('pr-barcode').value,
+                product_name: document.getElementById('pr-name').value, unit: document.getElementById('pr-unit').value,
+                unit_weight_kg: parseFloat(document.getElementById('pr-weight').value),
+                min_safety_stock: parseInt(document.getElementById('pr-min').value),
+                max_safety_stock: parseInt(document.getElementById('pr-max').value)
+            });
+            if (ok) e.target.reset();
+        });
+
+        document.getElementById('form-location').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const ok = await sendJSON('/api/locations', {
+                warehouse_id: 1,
+                zone: document.getElementById('lc-zone').value, aisle: document.getElementById('lc-aisle').value,
+                rack: document.getElementById('lc-rack').value, shelf_level: document.getElementById('lc-level').value,
+                bin: document.getElementById('lc-bin').value,
+                max_capacity_kg: parseFloat(document.getElementById('lc-cap').value),
+                status: document.getElementById('lc-status').value
+            });
+            if (ok) e.target.reset();
+        });
+
+        document.getElementById('form-partner').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const ok = await sendJSON('/api/partners', {
+                partner_code: document.getElementById('pa-code').value, type: document.getElementById('pa-type').value,
+                partner_name: document.getElementById('pa-name').value,
+                phone: document.getElementById('pa-phone').value, address: document.getElementById('pa-address').value
+            });
+            if (ok) e.target.reset();
+        });
+
+        // Định kỳ cập nhật lại dữ liệu dashboard nếu đã đăng nhập
+        setInterval(() => { if (me) { loadDashboard(); loadUsers(); } }, 5000);
     </script>
 </body>
 </html>

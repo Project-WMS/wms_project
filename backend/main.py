@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,6 +6,8 @@ from fastapi.responses import FileResponse
 from sqlalchemy import text
 
 from backend.database import engine
+from backend.auth import router as auth_router
+from backend.master import router as master_router
 from backend.routers import router
 
 app = FastAPI(title="Hệ thống Quản lý Kho WMS - FEFO & QR")
@@ -22,50 +23,16 @@ app.add_middleware(
 )
 
 # 2. Đăng ký các API chính của hệ thống
+app.include_router(auth_router)
+app.include_router(master_router)
 app.include_router(router)
 
 # 3. Các API Health Check (Kiểm tra trạng thái Backend và Database)
-=======
-from sqlalchemy import text
-from backend.database import engine
-
-from fastapi.middleware.cors import CORSMiddleware
-
-
-from fastapi import FastAPI
-
-app = FastAPI(title="WMS - Warehouse Management System")
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://127.0.0.1:5500",
-        "http://localhost:5500",
-    ],
-    allow_credentials=False,
-    allow_methods=["GET"],
-    allow_headers=["*"],
-)
-
-@app.get("/")
-def trang_chu():
-    return {
-        "message": "Chao mung den voi he thong WMS",
-        "status": "Backend dang hoat dong"
-    }
-
-
->>>>>>> a74ac06375bb7d25a8ec4891045bb7422acda9c1
 @app.get("/api/health")
 def kiem_tra_he_thong():
     return {
         "status": "ok",
-<<<<<<< HEAD
         "message": "FastAPI hoạt động thành công"
-=======
-        "message": "FastAPI hoat dong thanh cong"
->>>>>>> a74ac06375bb7d25a8ec4891045bb7422acda9c1
     }
 
 @app.get("/api/health/database")
@@ -73,7 +40,6 @@ def kiem_tra_database():
     try:
         with engine.connect() as ket_noi:
             ket_noi.execute(text("SELECT 1"))
-<<<<<<< HEAD
         return {
             "status": "ok",
             "message": "Kết nối PostgreSQL thành công"
@@ -103,21 +69,13 @@ def serve_desktop():
         "status": "Backend đang hoạt động (Chưa tìm thấy file index.html)"
     }
 
+@app.get("/login")
+def serve_login():
+    """Trang đăng nhập / đăng ký (FR0)."""
+    return FileResponse(os.path.join(FRONTEND_DIR, "login.html"))
+
+
 @app.get("/mobile")
 def serve_mobile():
     """Giao diện dành riêng cho máy quét mã QR / Điện thoại di động"""
     return FileResponse(os.path.join(FRONTEND_DIR, "mobile.html"))
-=======
-
-        return {
-            "status": "ok",
-            "message": "Ket noi PostgreSQL thanh cong"
-        }
-
-    except Exception as loi:
-        return {
-            "status": "error",
-            "message": "Khong the ket noi PostgreSQL",
-            "detail": str(loi)
-        }
->>>>>>> a74ac06375bb7d25a8ec4891045bb7422acda9c1
