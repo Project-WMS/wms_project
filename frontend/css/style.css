@@ -1,17 +1,551 @@
-
-/* Cấu hình chung cho giao diện WMS */
+:root {
+    color-scheme: light;
+    --wms-ink: #172033;
+    --wms-muted: #526174;
+    --wms-line: #d7dee8;
+    --wms-focus: #2563eb;
+    --wms-navy: #101a2d;
+    --wms-emerald: #047857;
+    --wms-amber: #b45309;
+    --wms-danger: #991b1b;
+}
 
 * {
     box-sizing: border-box;
 }
 
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background-color: #f4f6f9;
-    color: #263238;
+button,
+input,
+select {
+    font: inherit;
 }
 
-h1 {
-    color: #1f4e79;
+button,
+select,
+input[type="file"] {
+    cursor: pointer;
+}
+
+:is(button, input, select, a, label):focus-visible {
+    outline: 3px solid #60a5fa;
+    outline-offset: 2px;
+}
+
+::selection {
+    color: #fff;
+    background: #1d4ed8;
+}
+
+.wms-login {
+    min-height: 100vh;
+    padding: 24px;
+    color: var(--wms-ink);
+    background:
+        radial-gradient(ellipse at 12% 8%, rgb(96 165 250 / 28%), transparent 34rem),
+        linear-gradient(145deg, #123c78, #253b8f 58%, #302c79);
+}
+
+.auth-card {
+    width: min(100%, 480px);
+    padding: clamp(24px, 5vw, 40px);
+    border: 1px solid rgb(255 255 255 / 55%);
+    border-radius: 22px;
+    box-shadow: 0 24px 64px rgb(0 0 0 / 28%);
+}
+
+.auth-brand-mark {
+    width: 60px;
+    height: 60px;
+}
+
+.auth-tabs {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 12px;
+    background: #edf1f7;
+}
+
+.auth-tab {
+    min-height: 46px;
+    border: 0;
+    border-radius: 9px;
+    color: #526174;
+    background: transparent;
+    transition: color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.auth-tab[aria-selected="true"] {
+    color: #1d4ed8;
+    background: #fff;
+    box-shadow: 0 2px 6px rgb(15 23 42 / 12%);
+}
+
+.auth-form {
+    animation: auth-enter 220ms cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.auth-form[hidden] {
+    display: none;
+}
+
+.auth-form label {
+    display: block;
+    margin-bottom: 6px;
+    color: #334155;
+    font-size: 14px;
+    font-weight: 650;
+}
+
+.auth-form input,
+.auth-form select {
+    min-height: 48px;
+    border-color: #b8c2d0;
+}
+
+.auth-help {
+    display: block;
+    margin-top: 6px;
+    color: #526174;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.auth-alert {
+    border-radius: 12px;
+    border-width: 1px;
+    padding: 12px 14px;
+    text-align: left;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.auth-alert[data-kind="pending"] {
+    color: #713f12;
+    border-color: #f0c36d;
+    background: #fff7df;
+}
+
+.auth-alert[data-kind="rejected"],
+.auth-alert[data-kind="locked"],
+.auth-alert[data-kind="error"] {
+    color: #7f1d1d;
+    border-color: #f0a3a3;
+    background: #fff0f0;
+}
+
+.auth-alert[data-kind="success"] {
+    color: #065f46;
+    border-color: #86d4b7;
+    background: #ecfdf5;
+}
+
+.auth-submit {
+    min-height: 50px;
+    transition: background-color 160ms ease, transform 160ms ease;
+}
+
+.auth-submit:not(:disabled):active {
+    transform: translateY(1px);
+}
+
+.wms-desktop {
+    min-width: 320px;
+    color: var(--wms-ink);
+}
+
+.wms-desktop header {
+    gap: 16px;
+}
+
+.wms-desktop header > div:first-child {
+    min-width: 0;
+}
+
+.wms-desktop header h1 {
+    max-width: 72ch;
+    font-size: 1.5rem;
+    line-height: 1.25;
+}
+
+.wms-desktop main h2 {
+    font-size: 1.125rem;
+    line-height: 1.35;
+}
+
+.wms-desktop main h3 {
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+.wms-desktop main > section {
+    scroll-margin-top: 20px;
+}
+
+.wms-desktop :is(input, select) {
+    min-height: 40px;
+}
+
+.wms-desktop form button {
+    min-height: 42px;
+}
+
+.wms-desktop table {
+    font-variant-numeric: tabular-nums;
+}
+
+.wms-desktop th {
+    white-space: nowrap;
+}
+
+.wms-desktop .alert-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid var(--wms-line);
+    border-left-width: 1px;
+    border-radius: 10px;
+    padding: 12px 14px;
+    line-height: 1.45;
+}
+
+.wms-desktop .alert-expired {
+    color: #7f1d1d;
+    border-color: #ef9a9a;
+    background: #fff0f0;
+}
+
+.wms-desktop .alert-expiring {
+    color: #713f12;
+    border-color: #e9b64b;
+    background: #fff8df;
+}
+
+.wms-desktop .alert-low-stock {
+    color: #881337;
+    border-color: #fb7185;
+    background: #fff1f2;
+}
+
+.wms-desktop .alert-overstock {
+    color: #1e3a8a;
+    border-color: #93c5fd;
+    background: #eff6ff;
+}
+
+.wms-desktop .alert-detail {
+    flex: 0 0 auto;
+    border-radius: 7px;
+    padding: 5px 8px;
+    font-weight: 700;
+    text-align: right;
+}
+
+.wms-desktop .alert-expired .alert-detail {
+    color: #fff;
+    background: #991b1b;
+}
+
+.wms-desktop .alert-expiring .alert-detail {
+    color: #713f12;
+    background: #fde68a;
+}
+
+.wms-desktop .alert-low-stock .alert-detail {
+    color: #881337;
+    background: #fecdd3;
+}
+
+.wms-desktop .alert-overstock .alert-detail {
+    color: #1e3a8a;
+    background: #dbeafe;
+}
+
+.wms-desktop .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    border-radius: 999px;
+    padding: 4px 9px;
+    font-size: 11px;
+    font-weight: 750;
+}
+
+.status-pending {
+    color: #854d0e;
+    background: #fef3c7;
+}
+
+.status-approved {
+    color: #065f46;
+    background: #d1fae5;
+}
+
+.status-rejected {
+    color: #991b1b;
+    background: #fee2e2;
+}
+
+.status-locked {
+    color: #334155;
+    background: #e2e8f0;
+}
+
+.wms-desktop #table-users button,
+.wms-desktop #table-users select,
+.wms-desktop #table-locations select {
+    min-height: 36px;
+}
+
+.wms-desktop :is(button, select):disabled {
+    cursor: not-allowed;
+    opacity: .55;
+}
+
+.wms-desktop .capacity-card {
+    min-width: 0;
+}
+
+.wms-desktop .capacity-qr {
+    min-width: 104px;
+    min-height: 104px;
+    display: grid;
+    place-items: center;
+    image-rendering: pixelated;
+}
+
+.wms-desktop .capacity-qr canvas,
+.wms-desktop .capacity-qr img {
+    display: block;
+    width: 92px;
+    height: 92px;
+    image-rendering: pixelated;
+}
+
+.wms-desktop #category-management {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.wms-mobile {
+    min-width: 320px;
+    min-height: 100vh;
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+    color: #f8fafc;
+    background: #0b1220;
+}
+
+.wms-mobile header {
+    gap: 10px;
+    padding-top: max(12px, env(safe-area-inset-top));
+}
+
+.wms-mobile header > div:first-child {
+    min-width: 0;
+}
+
+.wms-mobile header h1 {
+    font-size: 1.25rem;
+    line-height: 1.25;
+}
+
+.wms-mobile main h2 {
+    font-size: 1.125rem;
+    line-height: 1.35;
+}
+
+.wms-mobile main h3 {
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+.wms-mobile main {
+    width: min(100%, 560px);
+    padding: 16px;
+}
+
+.wms-mobile :is(button, label, input, select) {
+    min-height: 48px;
+}
+
+.wms-mobile button,
+.wms-mobile label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.25;
+}
+
+.wms-mobile input[type="text"],
+.wms-mobile input[type="number"] {
+    width: 100%;
+    min-width: 0;
+    padding: 10px 12px;
+    font-size: 16px;
+    cursor: text;
+}
+
+.wms-mobile input::placeholder {
+    color: #a7b5c8;
+    opacity: 1;
+}
+
+.wms-mobile #qr-reader,
+.wms-mobile #qr-reader video,
+.wms-mobile #qr-reader canvas {
+    max-width: 100%;
+}
+
+.wms-mobile .scanner-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 56px;
+    gap: 8px;
+}
+
+.wms-mobile .scanner-row button {
+    padding: 8px;
+}
+
+.wms-mobile .task-card {
+    border: 1px solid #3b4b62;
+    border-radius: 16px;
+    padding: 16px;
+}
+
+.wms-mobile .task-identity {
+    overflow-wrap: anywhere;
+    font-size: 14px;
+    letter-spacing: .01em;
+}
+
+.wms-mobile .task-scan-fields {
+    display: grid;
+    gap: 10px;
+}
+
+.wms-mobile .task-scan-fields label {
+    justify-content: flex-start;
+    min-height: auto;
+    margin-bottom: 4px;
+    color: #cbd5e1;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.wms-mobile .task-quantity {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(110px, 140px);
+    align-items: center;
+    gap: 10px;
+}
+
+.wms-mobile .task-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+.wms-mobile .task-actions button {
+    width: 100%;
+    padding: 10px 12px;
+}
+
+.wms-mobile .field-invalid {
+    border-color: #fb7185 !important;
+    box-shadow: 0 0 0 2px rgb(244 63 94 / 32%);
+}
+
+.wms-mobile #scan-status {
+    position: sticky;
+    bottom: 12px;
+    z-index: 15;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 30%);
+}
+
+.wms-mobile .task-empty {
+    border: 1px dashed #475569;
+    border-radius: 16px;
+    padding: 22px 18px;
+    color: #cbd5e1;
+    text-align: center;
+    line-height: 1.55;
+}
+
+@keyframes auth-enter {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 640px) {
+    .wms-login {
+        padding: 14px;
+    }
+
+    .auth-card {
+        padding: 24px 20px;
+        border-radius: 18px;
+    }
+
+    .wms-desktop header {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 16px !important;
+    }
+
+    .wms-desktop header > div:last-child {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .wms-desktop main {
+        padding: 16px !important;
+    }
+
+    .wms-desktop .alert-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .wms-desktop .alert-detail {
+        text-align: left;
+    }
+
+    .wms-mobile header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .wms-mobile header > div:last-child {
+        width: 100%;
+    }
+
+    .wms-mobile header > div:last-child button {
+        flex: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
 }

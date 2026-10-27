@@ -6,94 +6,136 @@
     <title>Đăng nhập - WMS System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-600 to-indigo-800 min-h-screen flex items-center justify-center p-4">
+<body class="wms-login flex items-center justify-center">
 
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+    <main class="auth-card bg-white">
         <div class="text-center mb-6">
-            <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 text-blue-600 rounded-full text-2xl mb-3 shadow-inner">
+            <div class="auth-brand-mark inline-flex items-center justify-center bg-blue-100 text-blue-600 rounded-full text-2xl mb-3 shadow-inner" aria-hidden="true">
                 <i class="fa-solid fa-boxes-stacked"></i>
             </div>
             <h1 class="text-2xl font-bold text-gray-900">WMS - Quản lý kho</h1>
             <p class="text-sm text-gray-500 mt-1">Đăng nhập hoặc đăng ký tài khoản để vào hệ thống</p>
         </div>
 
-        <div class="grid grid-cols-2 gap-1 bg-gray-100 p-1 rounded-lg mb-5 text-sm font-semibold">
-            <button id="tab-login" onclick="switchTab('login')" class="py-2 rounded-md bg-white shadow text-blue-700">Đăng nhập</button>
-            <button id="tab-register" onclick="switchTab('register')" class="py-2 rounded-md text-gray-500">Đăng ký</button>
+        <div class="auth-tabs mb-5 text-sm font-semibold" role="tablist" aria-label="Chọn hình thức truy cập">
+            <button id="tab-login" type="button" role="tab" aria-controls="login-form" aria-selected="true" onclick="switchTab('login')" class="auth-tab">Đăng nhập</button>
+            <button id="tab-register" type="button" role="tab" aria-controls="register-form" aria-selected="false" onclick="switchTab('register')" class="auth-tab">Đăng ký</button>
         </div>
 
-        <div id="msg" class="hidden text-xs text-center font-medium rounded-lg p-2.5 mb-4"></div>
+        <div id="msg" class="auth-alert hidden mb-4" role="alert" aria-live="assertive" aria-atomic="true"></div>
 
         <!-- Đăng nhập -->
-        <form id="login-form" class="space-y-4">
+        <form id="login-form" class="auth-form space-y-4" role="tabpanel" aria-labelledby="tab-login">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Tên đăng nhập</label>
+                <label for="l-username">Tên đăng nhập</label>
                 <input type="text" id="l-username" required autocomplete="username"
                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Mật khẩu</label>
+                <label for="l-password">Mật khẩu</label>
                 <input type="password" id="l-password" required autocomplete="current-password"
                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
             </div>
-            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg text-sm">Đăng nhập</button>
+            <button type="submit" class="auth-submit w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 rounded-lg text-sm">Đăng nhập</button>
         </form>
 
         <!-- Đăng ký -->
-        <form id="register-form" class="space-y-4 hidden">
+        <form id="register-form" class="auth-form space-y-4" role="tabpanel" aria-labelledby="tab-register" hidden>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
+                <label for="r-fullname">Họ và tên</label>
                 <input type="text" id="r-fullname" required minlength="2" maxlength="100"
                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Tên đăng nhập</label>
-                <input type="text" id="r-username" required minlength="3" maxlength="50" autocomplete="username"
+                <label for="r-username">Tên đăng nhập</label>
+                <input type="text" id="r-username" required minlength="3" maxlength="50" pattern="[a-z0-9_.]{3,50}" autocomplete="username" autocapitalize="none" spellcheck="false" aria-describedby="username-help"
                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    placeholder="chữ thường không dấu, số, . _">
+                    placeholder="vd: nhanvien_01">
+                <small id="username-help" class="auth-help">3–50 ký tự: chữ thường không dấu, số, dấu chấm (.) hoặc gạch dưới (_).</small>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Mật khẩu (tối thiểu 6 ký tự)</label>
-                <input type="password" id="r-password" required minlength="6" autocomplete="new-password"
+                <label for="r-password">Mật khẩu</label>
+                <input type="password" id="r-password" required minlength="6" maxlength="100" autocomplete="new-password" aria-describedby="password-help"
                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                <small id="password-help" class="auth-help">Tối thiểu 6 ký tự.</small>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Vai trò mong muốn</label>
-                <select id="r-role" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white">
+                <label for="r-role">Vai trò mong muốn</label>
+                <select id="r-role" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white" aria-describedby="role-help">
                     <option value="worker">Công nhân kho (do Thủ kho/Admin duyệt)</option>
                     <option value="manager">Thủ kho (do Admin duyệt)</option>
                 </select>
+                <small id="role-help" class="auth-help">Chỉ đăng ký vai trò Công nhân hoặc Thủ kho. Tài khoản cần được phê duyệt trước khi sử dụng.</small>
             </div>
-            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 rounded-lg text-sm">Gửi yêu cầu đăng ký</button>
+            <button type="submit" class="auth-submit w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 rounded-lg text-sm">Gửi yêu cầu đăng ký</button>
         </form>
-    </div>
+    </main>
 
     <script>
         function show(text, isError) {
             const m = document.getElementById('msg');
             m.textContent = text;
-            m.className = 'text-xs text-center font-medium rounded-lg p-2.5 mb-4 ' +
-                (isError ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200');
+            const kind = /đang chờ/i.test(text) ? 'pending' :
+                (/đã bị từ chối/i.test(text) ? 'rejected' :
+                    (/đã bị khóa|không còn hoạt động/i.test(text) ? 'locked' : (isError ? 'error' : 'success')));
+            m.dataset.kind = kind;
+            m.className = 'auth-alert mb-4';
         }
 
         function switchTab(tab) {
             const isLogin = tab === 'login';
-            document.getElementById('login-form').classList.toggle('hidden', !isLogin);
-            document.getElementById('register-form').classList.toggle('hidden', isLogin);
-            document.getElementById('tab-login').className = 'py-2 rounded-md ' + (isLogin ? 'bg-white shadow text-blue-700' : 'text-gray-500');
-            document.getElementById('tab-register').className = 'py-2 rounded-md ' + (!isLogin ? 'bg-white shadow text-blue-700' : 'text-gray-500');
-            document.getElementById('msg').className = 'hidden';
+            const loginTab = document.getElementById('tab-login');
+            const registerTab = document.getElementById('tab-register');
+            document.getElementById('login-form').hidden = !isLogin;
+            document.getElementById('register-form').hidden = isLogin;
+            loginTab.setAttribute('aria-selected', String(isLogin));
+            registerTab.setAttribute('aria-selected', String(!isLogin));
+            document.getElementById('msg').className = 'auth-alert hidden mb-4';
+        }
+
+        function fieldName(path) {
+            const labels = {
+                username: 'Tên đăng nhập',
+                full_name: 'Họ và tên',
+                password: 'Mật khẩu',
+                role: 'Vai trò',
+                expected_qty: 'Số lượng',
+                actual_qty: 'Số lượng thực tế',
+                task_id: 'Nhiệm vụ',
+                scanned_qr: 'Mã QR ô kệ',
+                scanned_barcode: 'Mã vạch sản phẩm',
+            };
+            const key = String(path || '').split('.').pop();
+            return labels[key] || 'Thông tin';
+        }
+
+        function validationText(issue) {
+            const path = Array.isArray(issue.loc) ? issue.loc.slice(1).join('.') : '';
+            const field = fieldName(path);
+            const message = String(issue.msg || '');
+            if (/field required/i.test(message)) return `${field}: vui lòng nhập thông tin bắt buộc.`;
+            if (/at least (\d+) characters?/i.test(message)) return `${field}: cần ít nhất ${message.match(/at least (\d+) characters?/i)[1]} ký tự.`;
+            if (/at most (\d+) characters?/i.test(message)) return `${field}: không được vượt quá ${message.match(/at most (\d+) characters?/i)[1]} ký tự.`;
+            if (/greater than 0/i.test(message)) return `${field}: phải lớn hơn 0.`;
+            if (/valid integer/i.test(message)) return `${field}: vui lòng nhập số nguyên hợp lệ.`;
+            if (/valid number/i.test(message)) return `${field}: vui lòng nhập số hợp lệ.`;
+            if (/valid date/i.test(message)) return `${field}: vui lòng chọn ngày hợp lệ.`;
+            return `${field}: thông tin không hợp lệ.`;
         }
 
         function errText(data) {
             if (!data) return 'Có lỗi xảy ra';
-            if (Array.isArray(data.detail)) return data.detail.map(d => d.msg).join('; ');
-            return data.detail || data.message || 'Có lỗi xảy ra';
+            const detail = data.detail ?? data.message ?? data;
+            if (Array.isArray(detail)) return detail.map(validationText).join(' ');
+            if (typeof detail === 'string') return detail;
+            if (detail && typeof detail === 'object') return 'Thông tin gửi lên không hợp lệ. Vui lòng kiểm tra lại các trường.';
+            return 'Có lỗi xảy ra';
         }
 
         async function post(url, payload) {
@@ -105,6 +147,9 @@
 
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const submit = e.currentTarget.querySelector('[type="submit"]');
+            submit.disabled = true;
+            submit.textContent = 'Đang xác thực…';
             try {
                 const { ok, data } = await post('/api/auth/login', {
                     username: document.getElementById('l-username').value,
@@ -116,11 +161,17 @@
                 location.href = data.user.role === 'worker' ? '/mobile' : '/';
             } catch (_) {
                 show('Không kết nối được backend. Hãy kiểm tra FastAPI!', true);
+            } finally {
+                submit.disabled = false;
+                submit.textContent = 'Đăng nhập';
             }
         });
 
         document.getElementById('register-form').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const submit = e.currentTarget.querySelector('[type="submit"]');
+            submit.disabled = true;
+            submit.textContent = 'Đang gửi yêu cầu…';
             try {
                 const { ok, data } = await post('/api/auth/register', {
                     full_name: document.getElementById('r-fullname').value,
@@ -132,6 +183,9 @@
                 if (ok) e.target.reset();
             } catch (_) {
                 show('Không kết nối được backend. Hãy kiểm tra FastAPI!', true);
+            } finally {
+                submit.disabled = false;
+                submit.textContent = 'Gửi yêu cầu đăng ký';
             }
         });
 
