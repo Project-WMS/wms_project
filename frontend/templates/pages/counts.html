@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="wms-card">
+    <div class="toolbar">
+        <select id="statusFilter" class="form-select w-auto">
+            <option value="">Mọi trạng thái</option><option value="draft">Nháp</option><option value="counting">Đang kiểm đếm</option><option value="reconciled">Đã cân bằng</option>
+        </select>
+        <div class="grow text-muted small">Tồn kho chỉ thay đổi khi bạn bấm <b>Duyệt cân bằng kho</b> (BR05).</div>
+        <button class="btn btn-primary" id="btnAdd" type="button"><i class="fa-solid fa-plus me-1"></i>Lập phiếu kiểm kê</button>
+    </div>
+    <div class="table-responsive"><table class="table table-wms">
+        <thead><tr><th>Mã phiếu</th><th>Ô kệ</th><th class="num">Số lô</th><th class="num">Chênh lệch</th><th>Trạng thái</th><th>Người tạo</th><th>Duyệt bởi</th><th></th></tr></thead>
+        <tbody id="tbody"></tbody></table></div>
+    <div class="pager-bar" id="pager"></div>
+</div>
+
+<div class="modal fade" id="newModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><form class="modal-content" id="newForm" novalidate>
+        <div class="modal-header"><h5 class="modal-title">Lập phiếu kiểm kê</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div>
+        <div class="modal-body"><label class="form-label form-text-req" for="fLocation">Chọn ô kệ cần kiểm kê</label><select id="fLocation" class="form-select" required></select>
+            <div class="form-text">Hệ thống chụp số liệu tồn hiện tại của các lô trong ô để bạn đối chiếu với số đếm thực tế.</div></div>
+        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Hủy</button><button type="submit" class="btn btn-primary" id="btnCreate">Tạo phiếu</button></div>
+    </form></div>
+</div>
+
+<div class="modal fade" id="sheetModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title" id="sheetTitle">Phiếu kiểm kê</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div>
+        <div class="modal-body">
+            <div class="mb-2 small text-muted" id="sheetInfo"></div>
+            <div class="table-responsive"><table class="table table-wms">
+                <thead><tr><th>Sản phẩm</th><th>Lô</th><th class="num">Số hệ thống</th><th style="width:150px">Số đếm thực tế</th><th class="num">Chênh lệch</th></tr></thead>
+                <tbody id="sheetBody"></tbody></table></div>
+        </div>
+        <div class="modal-footer" id="sheetFooter">
+            <button type="button" class="btn btn-outline-danger me-auto" id="btnDelete"><i class="fa-solid fa-trash me-1"></i>Xóa phiếu</button>
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Đóng</button>
+            <button type="button" class="btn btn-outline-primary" id="btnSaveSheet">Lưu số liệu</button>
+            <button type="button" class="btn btn-primary" id="btnApprove"><i class="fa-solid fa-scale-balanced me-1"></i>Duyệt cân bằng kho</button>
+        </div>
+    </div></div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/pages/counts.js"></script>{% endblock %}

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Đăng nhập · WMS Kho</title>
+    {% include "partials/head_assets.html" %}
+    <style>
+        body { background: linear-gradient(135deg, #0f172a 0%, #115e59 100%); min-height: 100vh; display: grid; place-items: center; padding: 1rem; }
+        .login-card { width: 100%; max-width: 440px; background: #fff; border-radius: 1rem; padding: 2rem; box-shadow: 0 20px 50px rgba(0,0,0,.35); }
+        .login-logo { width: 56px; height: 56px; border-radius: 14px; background: var(--wms-primary); color: #fff; display: grid; place-items: center; font-size: 1.5rem; margin: 0 auto .75rem; }
+    </style>
+</head>
+<body>
+<div class="login-card">
+    <div class="text-center mb-4">
+        <div class="login-logo"><i class="fa-solid fa-warehouse"></i></div>
+        <h1 class="h4 fw-bold mb-1">WMS Kho</h1>
+        <p class="text-muted small mb-0">Quản lý kho theo FEFO &amp; mã QR ô kệ</p>
+    </div>
+
+    <ul class="nav nav-pills nav-fill mb-3" id="authTabs" role="tablist">
+        <li class="nav-item"><button class="nav-link active" id="tabLogin" type="button" data-tab="login">Đăng nhập</button></li>
+        <li class="nav-item"><button class="nav-link" id="tabRegister" type="button" data-tab="register">Đăng ký</button></li>
+    </ul>
+
+    <div id="msg" class="alert d-none py-2 small" role="alert"></div>
+
+    <form id="loginForm" novalidate>
+        <div class="mb-3"><label class="form-label" for="lUser">Tên đăng nhập</label><input id="lUser" class="form-control" required autocomplete="username" autofocus></div>
+        <div class="mb-3"><label class="form-label" for="lPass">Mật khẩu</label><input id="lPass" type="password" class="form-control" required autocomplete="current-password"></div>
+        <button class="btn btn-primary w-100" type="submit" id="btnLogin">Đăng nhập</button>
+    </form>
+
+    <form id="registerForm" class="d-none" novalidate>
+        <div class="mb-3"><label class="form-label" for="rName">Họ và tên</label><input id="rName" class="form-control" required minlength="2" maxlength="100"></div>
+        <div class="mb-3"><label class="form-label" for="rUser">Tên đăng nhập</label><input id="rUser" class="form-control" required minlength="3" maxlength="50" autocomplete="username" placeholder="chữ thường không dấu, số, . _">
+            <div class="form-text">Ví dụ: nguyenvan.a</div></div>
+        <div class="mb-3"><label class="form-label" for="rPass">Mật khẩu (tối thiểu 6 ký tự)</label><input id="rPass" type="password" class="form-control" required minlength="6" autocomplete="new-password"></div>
+        <div class="mb-3"><label class="form-label" for="rRole">Vai trò đăng ký</label>
+            <select id="rRole" class="form-select"><option value="worker">Công nhân kho (Thủ kho hoặc Admin duyệt)</option><option value="manager">Thủ kho (Admin duyệt)</option></select></div>
+        <button class="btn btn-primary w-100" type="submit" id="btnRegister">Gửi yêu cầu đăng ký</button>
+    </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/static/js/core/api.js"></script>
+<script src="/static/js/pages/login.js"></script>
+</body>
+</html>

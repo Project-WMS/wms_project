@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block roles %}admin,manager,worker{% endblock %}
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-5"><div class="wms-card">
+        <div class="card-head"><h2><i class="fa-solid fa-id-card me-2 text-muted"></i>Thông tin tài khoản</h2></div>
+        <div class="card-body-pad"><dl class="row mb-0">
+            <dt class="col-5">Họ và tên</dt><dd class="col-7" data-user-name></dd>
+            <dt class="col-5">Tên đăng nhập</dt><dd class="col-7 ledger-ref" id="pUsername">–</dd>
+            <dt class="col-5">Vai trò</dt><dd class="col-7" data-user-role></dd>
+        </dl></div>
+    </div></div>
+    <div class="col-lg-5"><div class="wms-card">
+        <div class="card-head"><h2><i class="fa-solid fa-key me-2 text-muted"></i>Đổi mật khẩu</h2></div>
+        <form class="card-body-pad" id="pwForm" novalidate>
+            <div class="mb-3"><label class="form-label form-text-req" for="fOld">Mật khẩu hiện tại</label><input type="password" id="fOld" class="form-control" required autocomplete="current-password"></div>
+            <div class="mb-3"><label class="form-label form-text-req" for="fNew">Mật khẩu mới (tối thiểu 6 ký tự)</label><input type="password" id="fNew" class="form-control" required minlength="6" autocomplete="new-password"></div>
+            <div class="mb-3"><label class="form-label form-text-req" for="fConfirm">Nhập lại mật khẩu mới</label><input type="password" id="fConfirm" class="form-control" required autocomplete="new-password"></div>
+            <button class="btn btn-primary" type="submit" id="btnSave">Đổi mật khẩu</button>
+        </form>
+    </div></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+WMS.ready(function (me) {
+    document.getElementById('pUsername').textContent = me.username;
+    document.getElementById('pwForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        if (!e.target.reportValidity()) return;
+        if (document.getElementById('fNew').value !== document.getElementById('fConfirm').value) return WMS.ui.error('Hai mật khẩu mới không khớp.');
+        const btn = document.getElementById('btnSave'); WMS.ui.setBusy(btn, true);
+        const res = await WMS.ui.run(() => WMS.api.post('/api/auth/change-password', { old_password: document.getElementById('fOld').value, new_password: document.getElementById('fNew').value }));
+        WMS.ui.setBusy(btn, false);
+        if (res) e.target.reset();
+    });
+});
+</script>
+{% endblock %}

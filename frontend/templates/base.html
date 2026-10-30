@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page_title }} · WMS Kho</title>
+    {% include "partials/head_assets.html" %}
+    {% block head %}{% endblock %}
+</head>
+{# data-roles: vai trò được vào trang; trang sẽ ẩn cho tới khi xác thực xong (class wms-pending) #}
+<body class="wms-pending" data-roles="{% block roles %}admin,manager{% endblock %}" data-page="{{ page }}">
+<div class="wms-shell">
+    {% include "partials/sidebar.html" %}
+    <div class="wms-main">
+        {% include "partials/topbar.html" %}
+        <main class="wms-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</div>
+
+<div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer" style="z-index: 2000"></div>
+
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true" style="z-index: 1100">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Xác nhận</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div>
+            <div class="modal-body"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" data-confirm-ok>Đồng ý</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include "partials/scripts_core.html" %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

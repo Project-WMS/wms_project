@@ -1,0 +1,10 @@
+<header class="wms-topbar">
+    <button class="btn btn-outline-secondary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-controls="sidebar" aria-label="Mở menu">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+    <h1>{% block topbar_title %}{{ page_title }}{% endblock %}</h1>
+    <div class="ms-auto d-flex align-items-center gap-2">
+        {% block topbar_actions %}{% endblock %}
+        <span class="text-muted small d-none d-md-inline"><i class="fa-regular fa-user me-1"></i><span data-user-name></span></span>
+    </div>
+</header>

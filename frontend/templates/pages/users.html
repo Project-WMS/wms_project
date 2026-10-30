@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="wms-card">
+    <div class="toolbar">
+        <div class="btn-group flex-wrap" role="group" id="statusTabs">
+            <button class="btn btn-outline-primary active" data-filter="all" type="button">Tất cả <span class="badge text-bg-light" data-cnt="all">0</span></button>
+            <button class="btn btn-outline-primary" data-filter="pending" type="button">Chờ duyệt <span class="badge text-bg-light" data-cnt="pending">0</span></button>
+            <button class="btn btn-outline-primary" data-filter="active" type="button">Hoạt động <span class="badge text-bg-light" data-cnt="active">0</span></button>
+            <button class="btn btn-outline-primary" data-filter="locked" type="button">Đã khóa <span class="badge text-bg-light" data-cnt="locked">0</span></button>
+            <button class="btn btn-outline-primary" data-filter="rejected" type="button">Đã từ chối <span class="badge text-bg-light" data-cnt="rejected">0</span></button>
+        </div>
+        <div class="grow text-muted small" id="hint"></div>
+    </div>
+    <div class="table-responsive"><table class="table table-wms">
+        <thead><tr><th>Tài khoản</th><th>Vai trò</th><th>Trạng thái</th><th>Đăng ký lúc</th><th>Duyệt bởi</th><th class="text-end">Thao tác</th></tr></thead>
+        <tbody id="tbody"></tbody></table></div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/pages/users.js"></script>{% endblock %}

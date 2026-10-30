@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="wms-card">
+    <div class="toolbar">
+        <div class="grow text-muted small">Chuyển hàng giữa các ô Bin. Chỉ chuyển được phần khả dụng (không gồm hàng đang giữ chỗ cho đơn xuất).</div>
+        <button class="btn btn-primary" id="btnAdd" type="button"><i class="fa-solid fa-plus me-1"></i>Lập phiếu điều chuyển</button>
+    </div>
+    <div class="table-responsive"><table class="table table-wms">
+        <thead><tr><th style="width:32px"></th><th>Mã phiếu</th><th>Nội dung chuyển</th><th>Trạng thái</th><th>Người thực hiện</th></tr></thead>
+        <tbody id="tbody"></tbody></table></div>
+    <div class="pager-bar" id="pager"></div>
+</div>
+
+<div class="modal fade" id="docModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable"><form class="modal-content" id="docForm" novalidate>
+        <div class="modal-header"><h5 class="modal-title">Lập phiếu điều chuyển</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div>
+        <div class="modal-body">
+            <div class="table-responsive"><table class="table line-table align-top">
+                <thead><tr><th style="min-width:330px">Lô hàng nguồn</th><th style="min-width:260px">Ô kệ đích</th><th style="width:130px">Số lượng</th><th style="width:40px"></th></tr></thead>
+                <tbody id="lines"></tbody></table></div>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddLine"><i class="fa-solid fa-plus me-1"></i>Thêm dòng</button>
+            <div class="form-text mt-2">Hệ thống ghi 2 dòng Thẻ kho cho mỗi lần chuyển (trừ ở Bin nguồn, cộng ở Bin đích) và kiểm tra tải trọng Bin đích (BR04).</div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Hủy</button><button type="submit" class="btn btn-primary" id="btnSave">Thực hiện điều chuyển</button></div>
+    </form></div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/pages/transfers.js"></script>{% endblock %}

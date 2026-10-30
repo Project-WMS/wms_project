@@ -1,0 +1,28 @@
+/* Giao diện Mobile cho công nhân kho: nền tối, nút lớn dễ bấm khi đeo găng */
+body.mobile-body { background: #0b1220; color: #e2e8f0; min-height: 100vh; padding-bottom: 5rem; font-size: 1rem; }
+.m-header { position: sticky; top: 0; z-index: 50; background: #111c33; border-bottom: 1px solid #1e2a47; padding: .75rem 1rem; display: flex; align-items: center; gap: .75rem; }
+.m-header .brand { font-weight: 700; font-size: 1.05rem; line-height: 1.1; }
+.m-header small { color: #94a3b8; display: block; font-weight: 400; font-size: .72rem; }
+.m-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; padding: .75rem 1rem; }
+.m-tab { border: 1px solid #243352; background: #111c33; color: #cbd5e1; border-radius: .75rem; padding: .85rem .5rem; font-weight: 600; min-height: 52px; }
+.m-tab.active { background: #0d9488; border-color: #0d9488; color: #fff; }
+.m-tab .cnt { background: rgba(255,255,255,.18); border-radius: 999px; padding: .1rem .55rem; margin-left: .35rem; font-size: .8rem; }
+.m-list { padding: 0 1rem; display: grid; gap: .85rem; }
+.task-card { background: #111c33; border: 1px solid #1e2a47; border-radius: 1rem; padding: 1rem; }
+.task-card.priority { border-color: #f59e0b; box-shadow: 0 0 0 1px rgba(245,158,11,.4); }
+.task-card .ref { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .78rem; color: #94a3b8; }
+.task-card .prod { font-weight: 700; font-size: 1.05rem; margin: .35rem 0 .15rem; }
+.task-card .meta { color: #94a3b8; font-size: .85rem; }
+.task-card .target { background: #0b1220; border: 1px dashed #2b3a5c; border-radius: .6rem; padding: .6rem .75rem; margin: .75rem 0; }
+.task-card .target b { color: #5eead4; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .95rem; word-break: break-all; }
+.task-card .form-label { font-size: .8rem; color: #94a3b8; margin-bottom: .2rem; }
+.task-card .form-control { background: #0b1220; border-color: #2b3a5c; color: #f1f5f9; min-height: 48px; }
+.task-card .form-control:focus { background: #0b1220; color: #fff; }
+.task-card .btn { min-height: 48px; font-weight: 600; }
+.m-empty { text-align: center; color: #64748b; padding: 3rem 1rem; }
+.m-empty i { font-size: 2.5rem; display: block; margin-bottom: .75rem; opacity: .5; }
+#qrReader { width: 100%; min-height: 260px; background: #000; border-radius: .75rem; overflow: hidden; }
+
+/* Giới hạn bề ngang khi mở trên màn hình lớn */
+.m-header, .m-tabs, .m-list { max-width: 560px; margin-left: auto; margin-right: auto; }
+.m-header { max-width: none; } .m-header > * { }

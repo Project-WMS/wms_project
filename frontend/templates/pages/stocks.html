@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3"><div class="wms-card kpi"><div class="icon icon-teal"><i class="fa-solid fa-layer-group"></i></div><div><div class="label">Số lô đang có</div><div class="value" id="sumLots">–</div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="wms-card kpi"><div class="icon icon-blue"><i class="fa-solid fa-boxes-stacked"></i></div><div><div class="label">Tổng tồn</div><div class="value" id="sumQty">–</div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="wms-card kpi"><div class="icon icon-amber"><i class="fa-solid fa-hourglass-half"></i></div><div><div class="label">Cận date (≤ 30 ngày)</div><div class="value" id="sumNear">–</div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="wms-card kpi"><div class="icon icon-rose"><i class="fa-solid fa-skull-crossbones"></i></div><div><div class="label">Đã hết hạn</div><div class="value" id="sumExpired">–</div></div></div></div>
+</div>
+<div class="wms-card">
+    <div class="toolbar">
+        <div class="grow"><input type="search" id="q" class="form-control" placeholder="Tìm theo SKU, tên, số lô, ô kệ..."></div>
+        <select id="fProduct" class="form-select w-auto" style="max-width:220px"></select>
+        <select id="fLocation" class="form-select w-auto" style="max-width:220px"></select>
+        <select id="fExpiry" class="form-select w-auto">
+            <option value="">Mọi hạn dùng</option><option value="expired">Đã hết hạn</option><option value="near">Cận date (≤ 30 ngày)</option><option value="ok">Còn hạn dài</option>
+        </select>
+        <button class="btn btn-outline-secondary" id="btnExport" type="button"><i class="fa-solid fa-file-csv me-1"></i>Xuất CSV</button>
+    </div>
+    <div class="table-responsive"><table class="table table-wms">
+        <thead><tr><th>Ô kệ</th><th>Sản phẩm</th><th>Lô</th><th>Hạn sử dụng</th><th class="num">Tồn thực tế</th><th class="num">Giữ chỗ</th><th class="num">Khả dụng</th><th class="num">Khối lượng</th></tr></thead>
+        <tbody id="tbody"></tbody></table></div>
+    <div class="pager-bar" id="pager"></div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/pages/stocks.js"></script>{% endblock %}

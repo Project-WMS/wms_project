@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="wms-card">
+    <div class="toolbar">
+        <div class="grow"><input type="search" id="q" class="form-control" placeholder="Tìm theo SKU, mã vạch, tên sản phẩm..."></div>
+        <select id="statusFilter" class="form-select w-auto">
+            <option value="">Tất cả trạng thái</option><option value="active">Đang dùng</option><option value="locked">Đã khóa</option>
+        </select>
+        <button class="btn btn-primary" id="btnAdd"><i class="fa-solid fa-plus me-1"></i>Thêm sản phẩm</button>
+    </div>
+    <div class="table-responsive"><table class="table table-wms">
+        <thead><tr><th>SKU / Tên</th><th>Mã vạch</th><th>Đơn vị</th><th class="num">Kg/đơn vị</th><th class="num">Tồn thực tế</th><th class="num">Khả dụng</th><th class="num">Min / Max</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody id="tbody"></tbody></table></div>
+    <div class="pager-bar" id="pager"></div>
+</div>
+
+<div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><form class="modal-content" id="productForm" novalidate>
+        <div class="modal-header"><h5 class="modal-title" id="productModalTitle">Thêm sản phẩm</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div>
+        <div class="modal-body"><div class="row g-3">
+            <div class="col-6"><label class="form-label form-text-req" for="fSku">Mã SKU</label><input id="fSku" class="form-control" required maxlength="50"></div>
+            <div class="col-6"><label class="form-label form-text-req" for="fBarcode">Mã vạch</label><input id="fBarcode" class="form-control" required maxlength="50"></div>
+            <div class="col-12"><label class="form-label form-text-req" for="fName">Tên sản phẩm</label><input id="fName" class="form-control" required maxlength="200"></div>
+            <div class="col-6"><label class="form-label form-text-req" for="fUnit">Đơn vị tính</label><input id="fUnit" class="form-control" required maxlength="20" placeholder="Thùng, Hộp..."></div>
+            <div class="col-6"><label class="form-label form-text-req" for="fWeight">Trọng lượng / đơn vị (kg)</label><input id="fWeight" type="number" step="0.001" min="0.001" class="form-control" required></div>
+            <div class="col-6"><label class="form-label form-text-req" for="fMin">Tồn tối thiểu</label><input id="fMin" type="number" min="0" class="form-control" required value="10"></div>
+            <div class="col-6"><label class="form-label form-text-req" for="fMax">Tồn tối đa</label><input id="fMax" type="number" min="0" class="form-control" required value="1000"></div>
+            <div class="col-12"><div class="form-text" id="fHint"></div></div>
+        </div></div>
+        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Hủy</button><button type="submit" class="btn btn-primary" id="btnSave">Lưu sản phẩm</button></div>
+    </form></div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/pages/products.js"></script>{% endblock %}

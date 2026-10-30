@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="wms-card">
+    <div class="toolbar">
+        <div class="grow"><input type="search" id="q" class="form-control" placeholder="Tìm theo mã phiếu hoặc nhà cung cấp..."></div>
+        <select id="statusFilter" class="form-select w-auto">
+            <option value="">Mọi trạng thái</option><option value="approved">Chờ xếp kệ</option><option value="putting_away">Đang xếp kệ</option><option value="completed">Hoàn tất</option>
+        </select>
+        <button class="btn btn-primary" id="btnAdd" type="button"><i class="fa-solid fa-plus me-1"></i>Lập phiếu nhập</button>
+    </div>
+    <div class="table-responsive"><table class="table table-wms">
+        <thead><tr><th style="width:32px"></th><th>Mã phiếu</th><th>Nhà cung cấp</th><th>Hàng hóa</th><th>Tiến độ xếp kệ</th><th>Trạng thái</th><th>Người tạo</th><th></th></tr></thead>
+        <tbody id="tbody"></tbody></table></div>
+    <div class="pager-bar" id="pager"></div>
+</div>
+
+<div class="modal fade" id="docModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable"><form class="modal-content" id="docForm" novalidate>
+        <div class="modal-header"><h5 class="modal-title">Lập phiếu nhập kho</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div>
+        <div class="modal-body">
+            <div class="row g-3 mb-3"><div class="col-md-6"><label class="form-label form-text-req" for="fSupplier">Nhà cung cấp</label><select id="fSupplier" class="form-select" required></select></div></div>
+            <div class="table-responsive"><table class="table line-table align-top">
+                <thead><tr><th style="min-width:290px">Sản phẩm</th><th style="min-width:120px">Số lô</th><th style="min-width:150px">Hạn sử dụng</th><th style="width:100px">Số lượng</th><th style="min-width:340px">Xếp vào ô kệ</th><th style="width:40px"></th></tr></thead>
+                <tbody id="lines"></tbody></table></div>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddLine"><i class="fa-solid fa-plus me-1"></i>Thêm dòng hàng</button>
+            <div class="form-text mt-2">Hệ thống kiểm tra tải trọng ô kệ (BR04, tính cả hàng đang chờ xếp) rồi gửi lệnh xếp kệ xuống Mobile.</div>
+        </div>
+        <div class="modal-footer"><div class="me-auto small text-muted" id="docSummary"></div>
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Hủy</button><button type="submit" class="btn btn-primary" id="btnSave">Duyệt phiếu nhập</button></div>
+    </form></div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/pages/inbound.js"></script>{% endblock %}

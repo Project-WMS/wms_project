@@ -1,0 +1,47 @@
+{# Menu bên trái - tương đương sidebar.html của bài demo. Mục hiển thị theo vai trò (data-roles-show). #}
+{% set menu = [
+    ('Tổng quan', [('dashboard', '/', 'fa-gauge-high', 'Dashboard', 'admin,manager')]),
+    ('Danh mục', [
+        ('products', '/products', 'fa-box-open', 'Sản phẩm', 'admin,manager'),
+        ('locations', '/locations', 'fa-qrcode', 'Ô kệ & mã QR', 'admin,manager'),
+        ('partners', '/partners', 'fa-handshake', 'Đối tác', 'admin,manager')]),
+    ('Nghiệp vụ kho', [
+        ('inbound', '/inbound', 'fa-truck-ramp-box', 'Nhập kho', 'admin,manager'),
+        ('outbound', '/outbound', 'fa-dolly', 'Xuất kho FEFO', 'admin,manager'),
+        ('transfers', '/transfers', 'fa-right-left', 'Điều chuyển', 'admin,manager'),
+        ('counts', '/counts', 'fa-clipboard-check', 'Kiểm kê', 'admin,manager')]),
+    ('Báo cáo', [
+        ('stocks', '/stocks', 'fa-warehouse', 'Tồn kho theo lô', 'admin,manager'),
+        ('ledger', '/ledger', 'fa-book', 'Thẻ kho', 'admin,manager')]),
+    ('Hệ thống', [
+        ('users', '/users', 'fa-users-gear', 'Nhân sự & duyệt', 'admin,manager'),
+        ('profile', '/profile', 'fa-user-gear', 'Hồ sơ cá nhân', 'admin,manager,worker'),
+        ('mobile', '/mobile', 'fa-mobile-screen', 'Màn hình công nhân', 'admin,manager,worker')]),
+] %}
+<aside class="wms-sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebar" aria-label="Menu chính">
+    <div class="offcanvas-header d-lg-none">
+        <span class="text-white fw-bold">Menu</span>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Đóng"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column p-0">
+        <a href="/" class="wms-brand">
+            <span class="logo"><i class="fa-solid fa-warehouse"></i></span>
+            <span><strong>WMS Kho</strong><small>FEFO · QR BIN</small></span>
+        </a>
+        <nav class="wms-nav flex-grow-1">
+            {% for group, items in menu %}
+            <div class="nav-group">{{ group }}</div>
+            {% for key, href, icon, label, roles in items %}
+            <a class="nav-item-link{% if page == key %} active{% endif %}" href="{{ href }}" data-roles-show="{{ roles }}">
+                <i class="fa-solid {{ icon }}"></i><span>{{ label }}</span>
+            </a>
+            {% endfor %}
+            {% endfor %}
+        </nav>
+        <div class="wms-sidebar-foot">
+            <div class="text-white fw-semibold" data-user-name>…</div>
+            <div class="mb-2" data-user-role></div>
+            <a href="#" class="btn btn-sm btn-outline-light w-100" data-logout><i class="fa-solid fa-right-from-bracket me-1"></i>Đăng xuất</a>
+        </div>
+    </div>
+</aside>

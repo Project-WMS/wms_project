@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="wms-card">
+    <div class="toolbar">
+        <div class="btn-group" role="group" id="typeTabs">
+            <button class="btn btn-outline-primary active" data-type="" type="button">Tất cả</button>
+            <button class="btn btn-outline-primary" data-type="supplier" type="button">Nhà cung cấp</button>
+            <button class="btn btn-outline-primary" data-type="customer" type="button">Khách hàng</button>
+        </div>
+        <div class="grow"><input type="search" id="q" class="form-control" placeholder="Tìm theo mã, tên, điện thoại..."></div>
+        <button class="btn btn-primary" id="btnAdd" type="button"><i class="fa-solid fa-plus me-1"></i>Thêm đối tác</button>
+    </div>
+    <div class="table-responsive"><table class="table table-wms">
+        <thead><tr><th>Mã</th><th>Tên đối tác</th><th>Loại</th><th>Điện thoại</th><th>Địa chỉ</th><th></th></tr></thead>
+        <tbody id="tbody"></tbody></table></div>
+    <div class="pager-bar" id="pager"></div>
+</div>
+
+<div class="modal fade" id="partnerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><form class="modal-content" id="partnerForm" novalidate>
+        <div class="modal-header"><h5 class="modal-title" id="partnerModalTitle">Thêm đối tác</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div>
+        <div class="modal-body"><div class="row g-3">
+            <div class="col-6"><label class="form-label form-text-req" for="fCode">Mã đối tác</label><input id="fCode" class="form-control text-uppercase" required maxlength="30"></div>
+            <div class="col-6"><label class="form-label" for="fType">Loại</label><select id="fType" class="form-select"><option value="supplier">Nhà cung cấp</option><option value="customer">Khách hàng</option></select></div>
+            <div class="col-12"><label class="form-label form-text-req" for="fName">Tên đối tác</label><input id="fName" class="form-control" required maxlength="150"></div>
+            <div class="col-12"><label class="form-label" for="fPhone">Điện thoại</label><input id="fPhone" class="form-control" maxlength="20"></div>
+            <div class="col-12"><label class="form-label" for="fAddress">Địa chỉ</label><textarea id="fAddress" class="form-control" rows="2"></textarea></div>
+            <div class="col-12"><div class="form-text" id="fHint"></div></div>
+        </div></div>
+        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Hủy</button><button type="submit" class="btn btn-primary" id="btnSave">Lưu đối tác</button></div>
+    </form></div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/pages/partners.js"></script>{% endblock %}

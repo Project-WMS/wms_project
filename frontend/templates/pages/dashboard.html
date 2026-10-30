@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-3 mb-3">
+    <div class="col-6 col-xl-3"><div class="wms-card kpi"><div class="icon icon-teal"><i class="fa-solid fa-boxes-stacked"></i></div>
+        <div><div class="label">Tồn thực tế</div><div class="value" id="kpiOnHand">–</div></div></div></div>
+    <div class="col-6 col-xl-3"><div class="wms-card kpi"><div class="icon icon-amber"><i class="fa-solid fa-lock"></i></div>
+        <div><div class="label">Đang giữ chỗ</div><div class="value" id="kpiAllocated">–</div></div></div></div>
+    <div class="col-6 col-xl-3"><div class="wms-card kpi"><div class="icon icon-blue"><i class="fa-solid fa-circle-check"></i></div>
+        <div><div class="label">Khả dụng xuất</div><div class="value" id="kpiAvailable">–</div></div></div></div>
+    <div class="col-6 col-xl-3"><div class="wms-card kpi"><div class="icon icon-rose"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <div><div class="label">Cảnh báo</div><div class="value" id="kpiAlerts">–</div></div></div></div>
+</div>
+
+<div class="wms-card mb-3">
+    <div class="row g-0 text-nowrap">
+        <div class="col-6 col-lg-3"><a class="task-tile" href="/inbound"><span class="num text-warning" id="tilePutaway">–</span><span>Lệnh xếp kệ chờ<br><small class="text-muted">Mobile đang xử lý</small></span></a></div>
+        <div class="col-6 col-lg-3"><a class="task-tile" href="/outbound"><span class="num text-warning" id="tilePicking">–</span><span>Lệnh lấy hàng chờ<br><small class="text-muted">Theo FEFO</small></span></a></div>
+        <div class="col-6 col-lg-3"><a class="task-tile" href="/counts"><span class="num text-info" id="tileCounts">–</span><span>Phiếu kiểm kê mở<br><small class="text-muted">Chờ cân bằng kho</small></span></a></div>
+        <div class="col-6 col-lg-3"><a class="task-tile" href="/users"><span class="num text-danger" id="tileUsers">–</span><span>Tài khoản chờ duyệt<br><small class="text-muted">BR07</small></span></a></div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-8">
+        <div class="wms-card h-100">
+            <div class="card-head"><h2><i class="fa-solid fa-chart-column me-2 text-muted"></i>Tồn kho theo sản phẩm (top 10)</h2></div>
+            <div class="card-body-pad"><div style="height: 280px; position: relative"><canvas id="chartStock"></canvas></div>
+                <div id="chartEmpty" class="empty-state d-none"><i class="fa-solid fa-chart-simple"></i>Chưa có dữ liệu tồn kho</div></div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="wms-card h-100">
+            <div class="card-head"><h2><i class="fa-solid fa-weight-hanging me-2 text-muted"></i>Mức dùng tải trọng ô kệ</h2><a href="/locations" class="small">Xem tất cả</a></div>
+            <div class="card-body-pad" id="binUsage"></div>
+        </div>
+    </div>
+</div>
+
+<div class="wms-card mb-3">
+    <div class="card-head">
+        <h2><i class="fa-solid fa-bell me-2 text-muted"></i>Cảnh báo kho</h2>
+        <div class="btn-group btn-group-sm" role="group" id="alertTabs">
+            <button type="button" class="btn btn-outline-primary active" data-tab="low">Thiếu hàng <span class="badge text-bg-light" id="cntLow">0</span></button>
+            <button type="button" class="btn btn-outline-primary" data-tab="over">Vượt định mức <span class="badge text-bg-light" id="cntOver">0</span></button>
+            <button type="button" class="btn btn-outline-primary" data-tab="exp">Hạn sử dụng <span class="badge text-bg-light" id="cntExp">0</span></button>
+        </div>
+    </div>
+    <div class="table-responsive"><table class="table table-wms"><thead id="alertHead"></thead><tbody id="alertBody"></tbody></table></div>
+</div>
+
+<div class="wms-card">
+    <div class="card-head"><h2><i class="fa-solid fa-book me-2 text-muted"></i>Biến động kho gần nhất</h2><a href="/ledger" class="small">Mở thẻ kho</a></div>
+    <div class="table-responsive"><table class="table table-wms">
+        <thead><tr><th>Thời gian</th><th>Loại</th><th>Chứng từ</th><th>Sản phẩm</th><th>Lô</th><th class="num">Thay đổi</th><th class="num">Tồn sau</th><th>Người thực hiện</th></tr></thead>
+        <tbody id="recentLedger"></tbody></table></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="/static/js/pages/dashboard.js"></script>
+{% endblock %}

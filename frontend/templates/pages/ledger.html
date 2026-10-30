@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="wms-card">
+    <div class="toolbar">
+        <div class="grow"><input type="search" id="q" class="form-control" placeholder="Tìm mã chứng từ, số lô, SKU..."></div>
+        <select id="fProduct" class="form-select w-auto" style="max-width:220px"></select>
+        <select id="fType" class="form-select w-auto">
+            <option value="">Mọi loại</option><option value="PUTAWAY">Xếp kệ</option><option value="PICK">Lấy hàng</option><option value="TRANSFER">Điều chuyển</option><option value="COUNT_ADJUST">Kiểm kê</option>
+        </select>
+        <div class="input-group w-auto"><span class="input-group-text">Từ</span><input type="date" id="fFrom" class="form-control"></div>
+        <div class="input-group w-auto"><span class="input-group-text">Đến</span><input type="date" id="fTo" class="form-control"></div>
+        <button class="btn btn-outline-secondary" id="btnExport" type="button"><i class="fa-solid fa-file-csv me-1"></i>Xuất CSV</button>
+    </div>
+    <div class="table-responsive"><table class="table table-wms">
+        <thead><tr><th>Thời gian</th><th>Loại</th><th>Chứng từ</th><th>Sản phẩm</th><th>Lô</th><th>Từ ô</th><th>Đến ô</th><th class="num">Thay đổi</th><th class="num">Tồn sau</th><th>Người thực hiện</th></tr></thead>
+        <tbody id="tbody"></tbody></table></div>
+    <div class="pager-bar" id="pager"></div>
+</div>
+<p class="small text-muted mt-2"><i class="fa-solid fa-shield-halved me-1"></i>Thẻ kho là bất biến (BR06): hệ thống chỉ ghi thêm, không cho sửa hoặc xóa dòng đã ghi.</p>
+{% endblock %}
+{% block scripts %}<script src="/static/js/pages/ledger.js"></script>{% endblock %}

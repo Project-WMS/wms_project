@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="wms-card">
+    <div class="toolbar">
+        <div class="grow"><input type="search" id="q" class="form-control" placeholder="Tìm theo mã phiếu hoặc khách hàng..."></div>
+        <select id="statusFilter" class="form-select w-auto">
+            <option value="">Mọi trạng thái</option><option value="allocated">Chờ lấy hàng</option><option value="picking">Đang lấy hàng</option><option value="completed">Hoàn tất</option>
+        </select>
+        <button class="btn btn-primary" id="btnAdd" type="button"><i class="fa-solid fa-plus me-1"></i>Lập phiếu xuất</button>
+    </div>
+    <div class="table-responsive"><table class="table table-wms">
+        <thead><tr><th style="width:32px"></th><th>Mã phiếu</th><th>Khách hàng</th><th>Hàng hóa</th><th>Tiến độ lấy hàng</th><th>Trạng thái</th><th>Người tạo</th><th></th></tr></thead>
+        <tbody id="tbody"></tbody></table></div>
+    <div class="pager-bar" id="pager"></div>
+</div>
+
+<div class="modal fade" id="docModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable"><form class="modal-content" id="docForm" novalidate>
+        <div class="modal-header"><h5 class="modal-title">Lập phiếu xuất kho (tự động FEFO)</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div>
+        <div class="modal-body">
+            <div class="row g-3 mb-3"><div class="col-md-6"><label class="form-label form-text-req" for="fCustomer">Khách hàng</label><select id="fCustomer" class="form-select" required></select></div></div>
+            <div class="table-responsive"><table class="table line-table align-top">
+                <thead><tr><th style="min-width:280px">Sản phẩm</th><th style="width:140px">Số lượng</th><th style="width:40px"></th></tr></thead>
+                <tbody id="lines"></tbody></table></div>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddLine"><i class="fa-solid fa-plus me-1"></i>Thêm dòng hàng</button>
+            <div class="alert alert-light border mt-3 mb-0 small"><i class="fa-solid fa-circle-info me-1 text-primary"></i>Khi duyệt, hệ thống tự chọn lô <b>hết hạn sớm nhất trước (FEFO)</b>, bỏ qua lô đã hết hạn, giữ chỗ và gửi lệnh lấy hàng xuống Mobile.</div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Hủy</button><button type="submit" class="btn btn-primary" id="btnSave">Duyệt phiếu xuất</button></div>
+    </form></div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/pages/outbound.js"></script>{% endblock %}
