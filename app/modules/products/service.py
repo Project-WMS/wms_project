@@ -11,7 +11,7 @@ from app.core.utils import first, rows, to_decimal
 def list_products(db: Session) -> list:
     return rows(db.execute(text("""
         SELECT p.id, p.sku, p.barcode, p.product_name, p.unit, p.unit_weight_kg,
-               p.min_safety_stock, p.max_safety_stock, p.is_active, p.created_at,
+               p.min_safety_stock, p.max_safety_stock, p.is_active,
                COALESCE(t.on_hand, 0) AS total_on_hand, COALESCE(t.available, 0) AS total_available
         FROM products p
         LEFT JOIN (SELECT product_id, SUM(quantity_on_hand) AS on_hand, SUM(quantity_available) AS available

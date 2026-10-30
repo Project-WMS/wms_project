@@ -1,14 +1,16 @@
-WMS.ready(async function () {
+WMS.ready(function () {
     const { esc, num, date, expiryBadge } = WMS.ui;
     const $ = id => document.getElementById(id);
     const PAGE_SIZE = 15;
     let items = [], page = 1;
 
-    try {
-        const lk = await WMS.lookups(true);
+    // Khởi tạo sẵn placeholder để bộ lọc hiển thị ngay lập tức và tải danh mục song song với bảng tồn kho
+    WMS.ui.fillSelect('fProduct', [], { placeholder: 'Mọi sản phẩm' });
+    WMS.ui.fillSelect('fLocation', [], { placeholder: 'Mọi ô kệ' });
+    WMS.lookups(false).then(lk => {
         WMS.ui.fillSelect('fProduct', lk.products.map(p => ({ value: p.id, label: `${p.sku} | ${p.product_name}` })), { placeholder: 'Mọi sản phẩm' });
         WMS.ui.fillSelect('fLocation', lk.locations.map(l => ({ value: l.id, label: l.location_code })), { placeholder: 'Mọi ô kệ' });
-    } catch (e) { WMS.ui.error(e.message); }
+    }).catch(e => { if (e.status !== 401) WMS.ui.error(e.message); });
 
     const params = () => ({ q: $('q').value.trim(), product_id: $('fProduct').value, location_id: $('fLocation').value, expiry: $('fExpiry').value });
 

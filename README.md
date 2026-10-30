@@ -12,7 +12,10 @@ python -m venv .venv
 # Windows: .venv\Scripts\activate      macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 
-cp .env.example .env          # rồi điền DATABASE_URL (Supabase) hoặc DB_HOST/DB_USER/..., đặt WMS_SECRET_KEY
+# Tạo file .env thủ công ở thư mục gốc. Ví dụ dùng DATABASE_URL:
+# DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:5432/DB_NAME?sslmode=require
+# Hoặc khai báo DB_HOST, DB_PORT, DB_NAME, DB_USER và DB_PASSWORD.
+# Trước khi triển khai thật, đặt WMS_SECRET_KEY bằng một chuỗi ngẫu nhiên dài.
 
 python manage.py init-db --demo     # tạo 17 bảng + trigger BR06 + dữ liệu & 3 tài khoản mẫu
 # (CSDL thật, không muốn dữ liệu mẫu:)  python manage.py init-db  &&  python manage.py create-admin
@@ -27,6 +30,52 @@ Các lệnh khác: `python manage.py init-db --reset` (xóa sạch rồi tạo l
 > **Camera trên điện thoại** chỉ hoạt động khi trang chạy qua **HTTPS** hoặc `localhost` (quy định của trình duyệt). Truy cập bằng `http://<IP-LAN>:8000` vẫn dùng được nhưng phải nhập mã bằng tay; muốn quét camera hãy chạy sau HTTPS (Cloudflare Tunnel, ngrok, reverse proxy...).
 
 ## 2. Cấu trúc thư mục (mỗi chức năng = một module, giống app của Django)
+-Cấu hình tác vụ
+wms_project/
+├── app/                        <-- TOÀN BỘ BACKEND (Python / FastAPI)
+│   ├── main.py                 # Điểm khởi chạy server FastAPI
+│   ├── api.py                  # Gom toàn bộ đường dẫn API (/api/...)
+│   ├── web.py                  # Định tuyến trả về các trang HTML
+│   ├── core/                   # Cấu hình lõi Backend
+│   │   ├── config.py           # Đọc biến môi trường (.env)
+│   │   ├── database.py         # [*] File kết nối DB Supabase (vừa sửa)
+│   │   ├── deps.py             # Kiểm tra đăng nhập & phân quyền
+│   │   ├── security.py         # Mã hóa mật khẩu & JWT token
+│   │   ├── errors.py           # Xử lý lỗi hệ thống
+│   │   └── utils.py            # Hàm tiện ích SQL / thời gian
+│   └── modules/                # Nghiệp vụ Backend (API + SQL cho từng mục)
+│       ├── accounts/           # Đăng nhập, đăng ký, duyệt user
+│       ├── dashboard/          # Thống kê tổng quan
+│       ├── products/           # Sản phẩm
+│       ├── locations/          # Ô kệ & mã QR
+│       ├── partners/           # Đối tác (NCC / Khách hàng)
+│       ├── inbound/            # Nhập kho
+│       ├── outbound/           # Xuất kho FEFO
+│       ├── transfers/          # Điều chuyển
+│       ├── counts/             # Kiểm kê
+│       ├── stocks/             # Tồn kho & Thẻ kho
+│       ├── lookups/            # API lấy danh sách cho các ô chọn (select)
+│       └── tasks/              # Nhiệm vụ quét QR trên Mobile
+│
+├── scripts/                    <-- BACKEND SCRIPTS (Khởi tạo CSDL)
+│   ├── init_db.py              # Tạo bảng PostgreSQL & dữ liệu mẫu
+│   └── create_admin.py         # Tạo tài khoản Admin
+├── manage.py                   <-- Lệnh chạy nhanh Backend (runserver, init-db)
+│
+└── frontend/                   <-- TOÀN BỘ FRONTEND (Giao diện trình duyệt)
+    ├── templates/              # Giao diện HTML (base.html, sidebar, các trang)
+    └── static/
+        ├── css/                # Giao diện màu sắc, bố cục (style.css, mobile.css)
+        └── js/                 # Code xử lý trên trình duyệt
+            ├── core/
+            │   ├── api.js      # Hàm fetch() gọi sang Backend (/api/...)
+            │   ├── layout.js   # [*] Khung trang & kiểm tra đăng nhập 
+            │   ├── lookups.js  # [*] Bộ nhớ đệm danh mục ô chọn 
+            │   └── ui.js       # Định dạng bảng, thông báo, phân trang
+            └── pages/          # JS riêng của từng màn hình
+                ├── stocks.js   # [*] Trang Tồn kho 
+                ├── ledger.js   # [*] Trang Thẻ kho 
+                └── ...         # (products.js, inbound.js, outbound.js...)
 
 ```
 wms_project/

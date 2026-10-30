@@ -1,13 +1,14 @@
-WMS.ready(async function () {
+WMS.ready(function () {
     const { esc, num, datetime, badge } = WMS.ui;
     const $ = id => document.getElementById(id);
     const PAGE_SIZE = 20;
     let page = 1, total = 0, items = [];
 
-    try {
-        const lk = await WMS.lookups(true);
+    // Khởi tạo sẵn placeholder và tải danh sách sản phẩm song song với bảng thẻ kho (không chặn load)
+    WMS.ui.fillSelect('fProduct', [], { placeholder: 'Mọi sản phẩm' });
+    WMS.lookups(false).then(lk => {
         WMS.ui.fillSelect('fProduct', lk.products.map(p => ({ value: p.id, label: `${p.sku} | ${p.product_name}` })), { placeholder: 'Mọi sản phẩm' });
-    } catch (e) { WMS.ui.error(e.message); }
+    }).catch(e => { if (e.status !== 401) WMS.ui.error(e.message); });
 
     const filters = () => ({ q: $('q').value.trim(), product_id: $('fProduct').value, transaction_type: $('fType').value, date_from: $('fFrom').value, date_to: $('fTo').value });
     const chg = v => `<span class="${v >= 0 ? 'qty-in' : 'qty-out'}">${v > 0 ? '+' : ''}${num(v)}</span>`;

@@ -31,6 +31,8 @@ def database_url() -> str:
             url = url.replace("postgresql://", "postgresql+psycopg://", 1)
         elif url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql+psycopg://", 1)
+        elif url.startswith("postgresql+psycopg2://"):
+            url = url.replace("postgresql+psycopg2://", "postgresql+psycopg://", 1)
         return url
     user = os.getenv("DB_USER", "postgres")
     password = os.getenv("DB_PASSWORD", "")

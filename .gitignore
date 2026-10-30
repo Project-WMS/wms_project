@@ -1,6 +1,7 @@
 .env
 .github/
 .venv/
+.vscode/
 __pycache__/
 *.py[cod]
 .DS_Store

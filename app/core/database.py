@@ -1,16 +1,23 @@
 """Kết nối PostgreSQL (Supabase) bằng SQLAlchemy + dependency get_db cho FastAPI."""
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import NullPool
 
 from app.core.config import database_url
 
-# NullPool + prepare_threshold=None để tương thích Supabase Pooler (cổng 6543, transaction mode)
+# Giữ kết nối qua QueuePool + pool_pre_ping để không phải bắt tay TCP/SSL lại tới Supabase ở mỗi request.
+# prepare_threshold=None tương thích cả kết nối trực tiếp (5432) lẫn Supabase Pooler (6543).
 engine = create_engine(
     database_url(),
     echo=False,
-    poolclass=NullPool,
-    connect_args={"prepare_threshold": None, "connect_timeout": 10},
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True,
+    pool_recycle=300,
+    connect_args={
+        "prepare_threshold": None,
+        "connect_timeout": 10,
+        "options": "-c timezone=UTC",
+    },
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -19,10 +26,6 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 def get_db():
     db = SessionLocal()
     try:
-        # SET LOCAL chỉ có hiệu lực trong transaction hiện tại -> an toàn với connection pooler.
-        # Đảm bảo CURRENT_TIMESTAMP luôn là UTC bất kể cấu hình máy chủ DB.
-        if engine.dialect.name == "postgresql":
-            db.execute(text("SET LOCAL TIME ZONE 'UTC'"))
         yield db
     finally:
         db.close()
