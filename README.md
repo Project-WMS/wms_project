@@ -20,9 +20,12 @@ pip install -r requirements.txt
 python manage.py init-db --demo     # tạo 17 bảng + trigger BR06 + dữ liệu & 3 tài khoản mẫu
 # (CSDL thật, không muốn dữ liệu mẫu:)  python manage.py init-db  &&  python manage.py create-admin
 
-python manage.py runserver          # http://127.0.0.1:8000/login
+ python manage.py runserver         # http://127.0.0.1:8000/login
 ```
+uvicorn app.main:app --reload
+ngrok http 8000         # chạy ngrok để thiết bị khác kết nối 
 
+python manage.py create-admin  # tạo tk admin
 Tài khoản mẫu (chỉ khi dùng `--demo`): `admin`, `thukho`, `congnhan` – mật khẩu `Wms@2026` (đổi bằng `SEED_PASSWORD` trong `.env`, **hãy đổi ngay khi dùng thật**).
 
 Các lệnh khác: `python manage.py init-db --reset` (xóa sạch rồi tạo lại, có hỏi xác nhận), `python manage.py runserver --host 0.0.0.0 --port 8000`, `python -m unittest tests.test_security -v`.

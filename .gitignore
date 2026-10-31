@@ -8,6 +8,8 @@ __pycache__/
 node_modules/
 dist/
 build/
+.agents/
+.claude/
 # --- Cấu hình bỏ qua các file trợ lý AI Agent / Impeccable ---
 PRODUCT.md
 .impeccable/
@@ -15,6 +17,6 @@ impeccable*.json
 impeccable*.md
 impeccable*.agent.md
 .github/hooks/impeccable.json
-
+skills-lock.json
 # (Tùy chọn) Nếu bạn muốn ẩn toàn bộ thư mục .github nếu không dùng action riêng:
 # .github/
