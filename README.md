@@ -1,9 +1,9 @@
-# WMS – Hệ thống Quản lý Kho (FEFO & mã QR Bin)
+# Digital Warehouse – Hệ thống Quản lý Kho (FEFO & mã QR Bin)
 
 Web quản lý **kho** (không gồm bán hàng) theo đặc tả **SRS v3**: nhập kho → xếp kệ bằng quét QR → xuất kho tự động theo **FEFO** → điều chuyển → kiểm kê → thẻ kho bất biến.
 
 - **Backend:** FastAPI + SQLAlchemy (SQL thuần) + PostgreSQL/Supabase, xác thực JWT HS256, mật khẩu PBKDF2.
-- **Frontend:** HTML + Bootstrap 5 + JavaScript thuần, giao diện quản trị nhiều trang (sidebar) và trang Mobile quét QR cho công nhân.
+- **Frontend:** HTML + Bootstrap 5 + JavaScript thuần, giao diện quản trị nhiều trang (sidebar) và Mobile dashboard quét QR cho công nhân.
 
 ## 1. Cài đặt & chạy
 

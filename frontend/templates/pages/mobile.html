@@ -1,31 +1,136 @@
 <!DOCTYPE html>
-<html lang="vi" data-bs-theme="dark">
+<html lang="vi">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>WMS Mobile · Quét QR</title>
+    <meta name="theme-color" content="#082d5d">
+    <title>Nhiệm vụ Mobile · Digital Warehouse</title>
     {% include "partials/head_assets.html" %}
-    <link href="/static/css/mobile.css" rel="stylesheet">
+    <link href="/static/css/mobile.css?v=2026110301" rel="stylesheet">
 </head>
 <body class="mobile-body wms-pending" data-roles="admin,manager,worker" data-page="mobile">
 <header class="m-header">
-    <div class="me-auto"><div class="brand"><i class="fa-solid fa-warehouse me-1 text-info"></i>WMS Mobile<small><span data-user-name>…</span> • <span data-user-role></span></small></div></div>
-    <a href="/" class="btn btn-sm btn-outline-light d-none" id="btnBackOffice" aria-label="Về trang quản lý"><i class="fa-solid fa-gauge-high"></i></a>
-    <button class="btn btn-sm btn-outline-light" id="btnRefresh" type="button" aria-label="Làm mới"><i class="fa-solid fa-rotate"></i></button>
-    <button class="btn btn-sm btn-outline-danger" data-logout type="button" aria-label="Đăng xuất"><i class="fa-solid fa-right-from-bracket"></i></button>
+    <div class="m-brand">
+        <img class="m-brand-wordmark" src="/brand/logo_ten.png" alt="Digital Warehouse">
+    </div>
+    <div class="m-account">
+        <span class="m-account-name" data-user-name>…</span>
+        <span class="m-account-role" data-user-role></span>
+    </div>
+    <div class="m-header-actions">
+        <a href="/profile" class="m-icon-button" aria-label="Cài đặt tài khoản" title="Cài đặt tài khoản"><i class="fa-solid fa-user-gear"></i></a>
+        <a href="/" class="m-icon-button d-none" id="btnBackOffice" aria-label="Về trang quản lý"><i class="fa-solid fa-gauge-high"></i></a>
+        <button class="m-icon-button" id="btnRefresh" type="button" aria-label="Làm mới dữ liệu">
+            <i class="fa-solid fa-rotate" id="refreshIcon"></i><span class="visually-hidden" id="refreshStatus" aria-live="polite"></span>
+        </button>
+        <button class="m-icon-button m-logout" data-logout type="button" aria-label="Đăng xuất"><i class="fa-solid fa-right-from-bracket"></i></button>
+    </div>
 </header>
 
-<div class="m-tabs">
-    <button class="m-tab active" type="button" data-tab="putaway"><i class="fa-solid fa-arrow-down-to-bracket me-1"></i>Xếp kệ <span class="cnt" id="cntPutaway">0</span></button>
-    <button class="m-tab" type="button" data-tab="picking"><i class="fa-solid fa-hand me-1"></i>Lấy hàng <span class="cnt" id="cntPicking">0</span></button>
-</div>
+<main class="m-main">
+    <section class="m-screen" id="dashboardView" aria-labelledby="dashboardTitle">
+        <div class="m-welcome">
+            <h1 id="dashboardTitle">Nhiệm vụ của bạn</h1>
+            <p>Chọn công việc cần xử lý tại kho.</p>
+        </div>
+        <div class="m-section-heading">
+            <h2>Chọn loại nhiệm vụ</h2>
+            <span class="m-live-label"><i></i>Dữ liệu trực tiếp</span>
+        </div>
+        <div class="m-task-grid">
+            <button class="m-task-tile" type="button" data-task-kind="putaway">
+                <span class="m-task-icon icon-putaway"><i class="fa-solid fa-boxes-stacked"></i></span>
+                <span class="m-task-name">Xếp kệ</span>
+                <span class="m-task-desc">Đưa hàng vào đúng ô</span>
+                <span class="m-task-count" id="cntPutaway">–</span>
+                <span class="m-task-count-label">phiếu chờ</span>
+            </button>
+            <button class="m-task-tile" type="button" data-task-kind="picking">
+                <span class="m-task-icon icon-picking"><i class="fa-solid fa-dolly"></i></span>
+                <span class="m-task-name">Lấy hàng</span>
+                <span class="m-task-desc">Theo lô được phân bổ FEFO</span>
+                <span class="m-task-count" id="cntPicking">–</span>
+                <span class="m-task-count-label">phiếu chờ</span>
+            </button>
+            <button class="m-task-tile m-task-tile-wide" type="button" data-task-kind="all">
+                <span class="m-task-icon icon-all"><i class="fa-solid fa-list-check"></i></span>
+                <span class="m-task-name">Nhiệm vụ kho</span>
+                <span class="m-task-desc">Xem toàn bộ phiếu đang chờ xử lý</span>
+                <span class="m-task-count" id="cntAll">–</span>
+                <span class="m-task-count-label">phiếu chờ</span>
+            </button>
+            <a class="m-task-tile m-task-tile-wide m-task-link" data-roles-show="admin,manager" href="/counts">
+                <span class="m-task-icon icon-count"><i class="fa-solid fa-clipboard-check"></i></span>
+                <span class="m-task-name">Kiểm kê kho</span>
+                <span class="m-task-desc">Mở nghiệp vụ kiểm kê hiện có</span>
+                <span class="m-task-count-label">Quản lý kho</span>
+                <i class="fa-solid fa-arrow-right m-task-arrow" aria-hidden="true"></i>
+            </a>
+        </div>
+        <p class="m-dashboard-note"><i class="fa-solid fa-circle-info"></i> Mỗi phiếu sẽ mở riêng để bạn đối chiếu mã hàng, vị trí và số lượng trước khi xác nhận.</p>
+    </section>
 
-<main class="m-list" id="taskList"></main>
+    <section class="m-screen" id="listView" aria-labelledby="listTitle" hidden>
+        <div class="m-page-heading">
+            <button class="m-back-button" id="btnBackDashboard" type="button"><i class="fa-solid fa-arrow-left"></i><span>Trang chủ</span></button>
+            <h1 id="listTitle">Danh sách nhiệm vụ</h1>
+            <p id="listDescription">Chọn một phiếu để xem chi tiết.</p>
+        </div>
+        <div class="m-list-summary" id="listSummary" aria-live="polite"></div>
+        <div class="m-list" id="taskList" aria-live="polite" aria-busy="true">
+            <div class="m-loading"><span class="spinner-border" role="status"></span><span>Đang tải nhiệm vụ…</span></div>
+        </div>
+    </section>
+
+    <section class="m-screen" id="detailView" aria-labelledby="detailProduct" hidden>
+        <div class="m-page-heading m-detail-heading">
+            <button class="m-back-button" id="btnBackList" type="button"><i class="fa-solid fa-arrow-left"></i><span>Danh sách phiếu</span></button>
+            <div class="m-detail-ref-row"><span class="m-ref" id="detailRef"></span><span class="m-fefo-badge d-none" id="detailPriority">Ưu tiên FEFO</span></div>
+            <h1 id="detailProduct"></h1>
+            <p class="m-sku" id="detailSku"></p>
+        </div>
+        <div class="m-detail-facts">
+            <div><span>Lô hàng</span><strong id="detailBatch">–</strong></div>
+            <div><span>Hạn sử dụng</span><strong id="detailExpiry">–</strong></div>
+            <div class="m-fact-qty"><span>Số lượng cần xử lý</span><strong><b id="detailQty">–</b> <span id="detailUnit"></span></strong></div>
+        </div>
+        <div class="m-location-target">
+            <span class="m-location-label" id="locationAction">Vị trí yêu cầu</span>
+            <strong id="detailLocation"></strong>
+            <span id="locationHint">Đối chiếu mã ô kệ trên kệ hàng.</span>
+        </div>
+        <form id="taskForm" class="m-task-form" novalidate>
+            <div class="m-field">
+                <label for="taskQr">Mã QR ô kệ</label>
+                <div class="m-scan-group">
+                    <input id="taskQr" class="form-control" autocomplete="off" autocapitalize="characters" placeholder="Quét hoặc nhập mã ô kệ" required>
+                    <button class="m-scan-button" type="button" data-field="qr" aria-label="Quét QR ô kệ"><i class="fa-solid fa-qrcode"></i><span>Quét QR</span></button>
+                </div>
+            </div>
+            <div class="m-field" id="barcodeField" hidden>
+                <label for="taskBarcode">Mã vạch sản phẩm</label>
+                <div class="m-scan-group">
+                    <input id="taskBarcode" class="form-control" autocomplete="off" placeholder="Quét hoặc nhập mã vạch" >
+                    <button class="m-scan-button m-scan-button-blue" type="button" data-field="barcode" aria-label="Quét mã vạch sản phẩm"><i class="fa-solid fa-barcode"></i><span>Quét mã</span></button>
+                </div>
+            </div>
+            <div class="m-field">
+                <label for="taskQty">Số lượng thực tế</label>
+                <div class="m-qty-control">
+                    <input id="taskQty" type="number" class="form-control" min="1" step="1" inputmode="numeric" required>
+                    <span id="qtyLimit"></span>
+                </div>
+            </div>
+            <p class="m-inline-alert" id="staleTaskNotice" role="status" hidden>Phiếu này không còn trong danh sách chờ. Hãy quay lại và làm mới nhiệm vụ.</p>
+            <button class="m-confirm-button" id="btnConfirmTask" type="submit"><i class="fa-solid fa-check"></i><span id="confirmLabel">Xác nhận</span></button>
+        </form>
+    </section>
+</main>
 
 <div class="modal fade" id="scanModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
         <div class="modal-header"><h5 class="modal-title" id="scanTitle">Quét mã</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div>
-        <div class="modal-body"><div id="qrReader"></div><p class="small text-secondary mt-2 mb-0">Đưa mã vào khung hình. Nếu camera không mở được, hãy đóng và nhập mã bằng tay.</p></div>
+        <div class="modal-body"><div id="qrReader"></div><p class="small text-secondary mt-2 mb-0">Đưa mã vào khung hình. Nếu camera không mở được, hãy nhập mã bằng tay.</p></div>
     </div></div>
 </div>
 
@@ -33,6 +138,6 @@
 
 {% include "partials/scripts_core.html" %}
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script src="/static/js/pages/mobile.js"></script>
+<script src="/static/js/pages/mobile.js?v=20261103"></script>
 </body>
 </html>

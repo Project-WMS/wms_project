@@ -15,7 +15,7 @@
         ('ledger', '/ledger', 'fa-book', 'Thẻ kho', 'admin,manager')]),
     ('Hệ thống', [
         ('users', '/users', 'fa-users-gear', 'Nhân sự & duyệt', 'admin,manager'),
-        ('profile', '/profile', 'fa-user-gear', 'Hồ sơ cá nhân', 'admin,manager,worker'),
+        ('profile', '/profile', 'fa-user-gear', 'Cài đặt tài khoản', 'admin,manager,worker'),
         ('mobile', '/mobile', 'fa-mobile-screen', 'Màn hình công nhân', 'admin,manager,worker')]),
 ] %}
 <aside class="wms-sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebar" aria-label="Menu chính">
@@ -25,8 +25,8 @@
     </div>
     <div class="offcanvas-body d-flex flex-column p-0">
         <a href="/" class="wms-brand">
-            <span class="logo"><i class="fa-solid fa-warehouse"></i></span>
-            <span><strong>WMS Kho</strong><small>FEFO · QR BIN</small></span>
+            <span class="logo"><img src="/brand/logo_avt.png" alt=""></span>
+            <span><strong>Digital</strong><small>WAREHOUSE</small></span>
         </a>
         <nav class="wms-nav flex-grow-1">
             {% for group, items in menu %}

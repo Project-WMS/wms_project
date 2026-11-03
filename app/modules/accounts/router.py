@@ -4,7 +4,13 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.deps import current_user, require_admin, require_staff
 from app.modules.accounts import service
-from app.modules.accounts.schemas import ChangePasswordRequest, LoginRequest, RegisterRequest, RoleChangeRequest
+from app.modules.accounts.schemas import (
+    ChangePasswordRequest,
+    LoginRequest,
+    RegisterRequest,
+    RoleChangeRequest,
+    UpdateMyProfileRequest,
+)
 
 router = APIRouter(tags=["Tài khoản & Phân quyền"])
 
@@ -23,6 +29,11 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
 @router.get("/auth/me")
 def me(user=Depends(current_user)):
     return user
+
+
+@router.put("/auth/me")
+def update_my_profile(req: UpdateMyProfileRequest, user=Depends(current_user), db: Session = Depends(get_db)):
+    return service.update_my_profile(db, user["id"], req.full_name)
 
 
 @router.post("/auth/change-password")

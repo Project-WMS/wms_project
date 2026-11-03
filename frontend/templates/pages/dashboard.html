@@ -1,5 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
+<div class="dashboard-intro">
+    <div>
+        <h2>Hoạt động kho</h2>
+        <p>Theo dõi tồn kho, cảnh báo và tiến độ tác nghiệp từ dữ liệu hệ thống.</p>
+    </div>
+    <span class="dashboard-refresh"><i class="fa-solid fa-rotate me-2"></i>Cập nhật tự động</span>
+</div>
 <div class="row g-3 mb-3">
     <div class="col-6 col-xl-3"><div class="wms-card kpi"><div class="icon icon-teal"><i class="fa-solid fa-boxes-stacked"></i></div>
         <div><div class="label">Tồn thực tế</div><div class="value" id="kpiOnHand">–</div></div></div></div>
@@ -12,11 +19,28 @@
 </div>
 
 <div class="wms-card mb-3">
-    <div class="row g-0 text-nowrap">
-        <div class="col-6 col-lg-3"><a class="task-tile" href="/inbound"><span class="num text-warning" id="tilePutaway">–</span><span>Lệnh xếp kệ chờ<br><small class="text-muted">Mobile đang xử lý</small></span></a></div>
-        <div class="col-6 col-lg-3"><a class="task-tile" href="/outbound"><span class="num text-warning" id="tilePicking">–</span><span>Lệnh lấy hàng chờ<br><small class="text-muted">Theo FEFO</small></span></a></div>
-        <div class="col-6 col-lg-3"><a class="task-tile" href="/counts"><span class="num text-info" id="tileCounts">–</span><span>Phiếu kiểm kê mở<br><small class="text-muted">Chờ cân bằng kho</small></span></a></div>
-        <div class="col-6 col-lg-3"><a class="task-tile" href="/users"><span class="num text-danger" id="tileUsers">–</span><span>Tài khoản chờ duyệt<br><small class="text-muted">BR07</small></span></a></div>
+    <div class="card-head"><h2>Hàng đợi tác nghiệp</h2></div>
+    <div class="row g-0 dashboard-queue-grid">
+        <div class="col-6 col-xl-3"><a class="dashboard-queue-tile" href="/inbound">
+            <span class="dashboard-queue-count text-warning-emphasis" id="tilePutaway">–</span>
+            <span class="dashboard-queue-copy"><strong>Lệnh xếp kệ chờ</strong><small>Mobile đang xử lý</small></span>
+            <i class="fa-solid fa-arrow-right dashboard-queue-arrow" aria-hidden="true"></i>
+        </a></div>
+        <div class="col-6 col-xl-3"><a class="dashboard-queue-tile" href="/outbound">
+            <span class="dashboard-queue-count text-warning-emphasis" id="tilePicking">–</span>
+            <span class="dashboard-queue-copy"><strong>Lệnh lấy hàng chờ</strong><small>Theo FEFO</small></span>
+            <i class="fa-solid fa-arrow-right dashboard-queue-arrow" aria-hidden="true"></i>
+        </a></div>
+        <div class="col-6 col-xl-3"><a class="dashboard-queue-tile" href="/counts">
+            <span class="dashboard-queue-count text-info-emphasis" id="tileCounts">–</span>
+            <span class="dashboard-queue-copy"><strong>Phiếu kiểm kê mở</strong><small>Chờ cân bằng kho</small></span>
+            <i class="fa-solid fa-arrow-right dashboard-queue-arrow" aria-hidden="true"></i>
+        </a></div>
+        <div class="col-6 col-xl-3"><a class="dashboard-queue-tile" href="/users">
+            <span class="dashboard-queue-count text-danger-emphasis" id="tileUsers">–</span>
+            <span class="dashboard-queue-copy"><strong>Tài khoản chờ duyệt</strong><small>BR07</small></span>
+            <i class="fa-solid fa-arrow-right dashboard-queue-arrow" aria-hidden="true"></i>
+        </a></div>
     </div>
 </div>
 

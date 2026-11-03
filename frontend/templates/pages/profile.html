@@ -5,10 +5,18 @@
     <div class="col-lg-5"><div class="wms-card">
         <div class="card-head"><h2><i class="fa-solid fa-id-card me-2 text-muted"></i>Thông tin tài khoản</h2></div>
         <div class="card-body-pad"><dl class="row mb-0">
-            <dt class="col-5">Họ và tên</dt><dd class="col-7" data-user-name></dd>
+            <dt class="col-5">Họ và tên</dt><dd class="col-7" id="pFullName">–</dd>
             <dt class="col-5">Tên đăng nhập</dt><dd class="col-7 ledger-ref" id="pUsername">–</dd>
-            <dt class="col-5">Vai trò</dt><dd class="col-7" data-user-role></dd>
+            <dt class="col-5">Vai trò</dt><dd class="col-7" id="pRole">–</dd>
+            <dt class="col-5">Trạng thái</dt><dd class="col-7" id="pStatus">Đang tải…</dd>
         </dl></div>
+    </div></div>
+    <div class="col-lg-5"><div class="wms-card">
+        <div class="card-head"><h2><i class="fa-solid fa-user-pen me-2 text-muted"></i>Chỉnh sửa thông tin</h2></div>
+        <form class="card-body-pad" id="profileForm" novalidate>
+            <div class="mb-3"><label class="form-label form-text-req" for="fFullName">Tên hiển thị</label><input id="fFullName" class="form-control" required minlength="2" maxlength="100" autocomplete="name"></div>
+            <button class="btn btn-primary" type="submit" id="btnSaveProfile">Lưu thông tin</button>
+        </form>
     </div></div>
     <div class="col-lg-5"><div class="wms-card">
         <div class="card-head"><h2><i class="fa-solid fa-key me-2 text-muted"></i>Đổi mật khẩu</h2></div>
@@ -21,19 +29,4 @@
     </div></div>
 </div>
 {% endblock %}
-{% block scripts %}
-<script>
-WMS.ready(function (me) {
-    document.getElementById('pUsername').textContent = me.username;
-    document.getElementById('pwForm').addEventListener('submit', async e => {
-        e.preventDefault();
-        if (!e.target.reportValidity()) return;
-        if (document.getElementById('fNew').value !== document.getElementById('fConfirm').value) return WMS.ui.error('Hai mật khẩu mới không khớp.');
-        const btn = document.getElementById('btnSave'); WMS.ui.setBusy(btn, true);
-        const res = await WMS.ui.run(() => WMS.api.post('/api/auth/change-password', { old_password: document.getElementById('fOld').value, new_password: document.getElementById('fNew').value }));
-        WMS.ui.setBusy(btn, false);
-        if (res) e.target.reset();
-    });
-});
-</script>
-{% endblock %}
+{% block scripts %}<script src="/static/js/pages/profile.js"></script>{% endblock %}

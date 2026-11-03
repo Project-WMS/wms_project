@@ -11,6 +11,7 @@ load_dotenv(BASE_DIR / ".env", override=True)
 FRONTEND_DIR = BASE_DIR / "frontend"
 TEMPLATES_DIR = FRONTEND_DIR / "templates"
 STATIC_DIR = FRONTEND_DIR / "static"
+BRAND_DIR = FRONTEND_DIR / "anh_logo"
 
 # Hệ thống hiện vận hành một kho mặc định WH01 (SRS v3 - bảng warehouses)
 DEFAULT_WAREHOUSE_ID = 1

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RegisterRequest(BaseModel):
@@ -20,3 +20,9 @@ class RoleChangeRequest(BaseModel):
 class ChangePasswordRequest(BaseModel):
     old_password: str = Field(min_length=1, max_length=100)
     new_password: str = Field(min_length=6, max_length=100)
+
+
+class UpdateMyProfileRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    full_name: str = Field(min_length=2, max_length=100)

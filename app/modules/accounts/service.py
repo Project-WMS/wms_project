@@ -72,6 +72,22 @@ def change_password(db: Session, user_id: int, old_password: str, new_password: 
     return {"message": "Đã đổi mật khẩu thành công!"}
 
 
+def update_my_profile(db: Session, user_id: int, full_name: str) -> dict:
+    full_name = full_name.strip()
+    if len(full_name) < 2:
+        raise HTTPException(400, "Họ và tên phải có ít nhất 2 ký tự.")
+    user = first(db.execute(text("""
+        UPDATE users
+        SET full_name = :full_name
+        WHERE id = :id AND approval_status = 'approved' AND is_active = TRUE
+        RETURNING id, username, full_name, role, approval_status, is_active, created_at
+    """), {"full_name": full_name, "id": user_id}))
+    if not user:
+        raise HTTPException(404, "Không tìm thấy tài khoản đang hoạt động.")
+    db.commit()
+    return {"message": "Đã cập nhật thông tin tài khoản.", "user": user}
+
+
 def list_users(db: Session, actor: dict) -> list:
     """Danh sách tài khoản cấp dưới mà người dùng hiện tại được quản lý (chờ duyệt xếp trước)."""
     clause, params = placeholders("r", list(MANAGEABLE_ROLES.get(actor["role"], ())))

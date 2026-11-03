@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ page_title }} · WMS Kho</title>
+    <title>{{ page_title }} · Digital Warehouse</title>
     {% include "partials/head_assets.html" %}
     {% block head %}{% endblock %}
 </head>
@@ -11,12 +11,12 @@
 <body class="wms-pending" data-roles="{% block roles %}admin,manager{% endblock %}" data-page="{{ page }}">
 <div class="wms-shell">
     {% include "partials/sidebar.html" %}
-    <div class="wms-main">
+    <main class="wms-main">
         {% include "partials/topbar.html" %}
-        <main class="wms-content">
+        <div class="wms-content">
             {% block content %}{% endblock %}
-        </main>
-    </div>
+        </div>
+    </main>
 </div>
 
 <div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer" style="z-index: 2000"></div>

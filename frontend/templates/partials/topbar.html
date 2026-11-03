@@ -2,9 +2,16 @@
     <button class="btn btn-outline-secondary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-controls="sidebar" aria-label="Mở menu">
         <i class="fa-solid fa-bars"></i>
     </button>
+    <a class="wms-topbar-brand" href="/" aria-label="Digital Warehouse, trang tổng quan">
+        <img src="/brand/logo_ten.png" alt="Digital Warehouse">
+    </a>
+    <span class="wms-topbar-divider" aria-hidden="true"></span>
     <h1>{% block topbar_title %}{{ page_title }}{% endblock %}</h1>
-    <div class="ms-auto d-flex align-items-center gap-2">
+    <div class="ms-auto d-flex align-items-center gap-2 wms-topbar-user">
         {% block topbar_actions %}{% endblock %}
-        <span class="text-muted small d-none d-md-inline"><i class="fa-regular fa-user me-1"></i><span data-user-name></span></span>
+        <span class="text-muted small d-none d-md-inline">
+            <i class="fa-regular fa-user me-1"></i><span data-user-name></span>
+            <span class="wms-user-role" data-user-role></span>
+        </span>
     </div>
 </header>
