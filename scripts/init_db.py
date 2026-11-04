@@ -260,9 +260,15 @@ def create_schema(conn) -> None:
     if conn.dialect.name == "postgresql":
         for stmt in TRIGGER_STATEMENTS:
             conn.execute(text(stmt))
-    if not conn.execute(text("SELECT 1 FROM warehouses LIMIT 1")).first():
-        conn.execute(text("INSERT INTO warehouses (warehouse_code, warehouse_name, address) "
-                          "VALUES ('WH01', 'Kho tổng WH01', 'Kho mặc định')"))
+    
+    # Đảm bảo luôn có đủ cả 2 kho WH01 và WH02 (kể cả khi không chạy --reset)
+    conn.execute(text("""
+        INSERT INTO warehouses (warehouse_code, warehouse_name, address) 
+        VALUES 
+            ('WH01', 'Kho WH01 (Hàng Ngắn Hạn)', 'Chứa hàng HSD dưới 6 tháng'),
+            ('WH02', 'Kho WH02 (Hàng Dài Hạn)', 'Chứa hàng HSD từ 6 tháng trở lên')
+        ON CONFLICT (warehouse_code) DO NOTHING
+    """))
 
 
 def seed_demo(conn, password: str) -> None:
@@ -277,46 +283,170 @@ def seed_demo(conn, password: str) -> None:
         """), {"u": username, "p": pw_hash, "n": full_name, "r": role}).scalar()
     conn.execute(text("UPDATE users SET approved_by = :a, approved_at = CURRENT_TIMESTAMP"), {"a": ids["admin"]})
 
-    for code, name, typ, phone in [("NCC001", "Công ty Sữa Việt", "supplier", "0901000001"),
-                                   ("NCC002", "Nhà phân phối Thực phẩm Minh Phát", "supplier", "0901000002"),
-                                   ("KH001", "Siêu thị Bách Hóa Xanh", "customer", "0902000001"),
-                                   ("KH002", "Đại lý Hòa Bình", "customer", "0902000002")]:
+    # ================= 1. TẠO 10 ĐỐI TÁC (5 Nhà cung cấp, 5 Khách hàng) =================
+    for code, name, typ, phone in [
+        # 5 Nhà cung cấp (Suppliers)
+        ("NCC001", "Công ty CP Sữa Việt Nam (Vinamilk)", "supplier", "0901000001"),
+        ("NCC002", "Công ty CP Acecook Việt Nam", "supplier", "0901000002"),
+        ("NCC003", "Công ty TNHH Nước Giải Khát Suntory Pepsico", "supplier", "0901000003"),
+        ("NCC004", "Công ty CP Hàng Tiêu Dùng Masan", "supplier", "0901000004"),
+        ("NCC005", "Công ty TNHH Quốc tế Unilever VN", "supplier", "0901000005"),
+        # 5 Khách hàng (Customers)
+        ("KH001", "Chuỗi Siêu thị Bách Hóa Xanh", "customer", "0902000001"),
+        ("KH002", "Hệ thống Siêu thị Co.opmart", "customer", "0902000002"),
+        ("KH003", "Cửa hàng Tiện lợi Circle K", "customer", "0902000003"),
+        ("KH004", "Cửa hàng Tiện lợi FamilyMart", "customer", "0902000004"),
+        ("KH005", "Đại lý Bán buôn Tạp hóa Hòa Bình", "customer", "0902000005")
+    ]:
         conn.execute(text("INSERT INTO partners (partner_code, partner_name, type, phone) VALUES (:c, :n, :t, :p)"),
                      {"c": code, "n": name, "t": typ, "p": phone})
 
-    locs = {}
-    for bin_no, cap in [("B01", 800), ("B02", 1000), ("B03", 500), ("B04", 500)]:
-        locs[bin_no] = conn.execute(text("""
-            INSERT INTO locations (warehouse_id, location_code, zone, aisle, rack, shelf_level, bin, max_capacity_kg, status)
-            VALUES (1, :code, 'Z01', 'A01', 'R01', 'L1', :b, :cap, 'active') RETURNING id
-        """), {"code": f"WH01-Z01-A01-R01-L1-{bin_no}", "b": bin_no, "cap": cap}).scalar()
+# ================= 2. TẠO TỰ ĐỘNG 1800 VỊ TRÍ KHO (900 vị trí / kho) =================
+    # Bắt buộc thêm lệnh này để đảm bảo có đủ cả WH01 và WH02, trị dứt điểm lỗi IndexError
+    conn.execute(text("""
+        INSERT INTO warehouses (warehouse_code, warehouse_name, address) 
+        VALUES 
+            ('WH01', 'Kho WH01 (Hàng Ngắn Hạn)', 'Chứa hàng HSD dưới 6 tháng'),
+            ('WH02', 'Kho WH02 (Hàng Dài Hạn)', 'Chứa hàng HSD từ 6 tháng trở lên')
+        ON CONFLICT (warehouse_code) DO NOTHING
+    """))
 
+    wh_ids = {}
+    for row in conn.execute(text("SELECT id, warehouse_code FROM warehouses")).fetchall():
+        wh_ids[row.warehouse_code] = row.id
+
+    locs = {"WH01": [], "WH02": []}
+    for wh_code, wh_id in wh_ids.items():
+        b_count = 1 # Biến đếm Vị trí (Bin) chạy liên tục từ B001 đến B900 cho mỗi kho
+        
+        # 3 khu vực (Z01-Z03)
+        for z in range(1, 4):
+            # 3 dãy (A01-A03)
+            for a in range(1, 4):
+                # 5 kệ (R01-R05)
+                for r in range(1, 6):
+                    # 5 tầng (L01-L05) - Giữ nguyên theo đúng bản cập nhật của bạn
+                    for l in range(1, 6):
+                        # 4 vị trí mỗi tầng
+                        for b in range(1, 5):
+                            zone = f"Z{z:02d}"
+                            aisle = f"A{a:02d}"
+                            rack = f"R{r:02d}"
+                            level = f"L{l:02d}"
+                            bin_no = f"B{b_count:03d}" 
+                            
+                            # Ghép thành chuỗi (VD: WH01-Z01-A01-R01-L01-B001)
+                            loc_code = f"{wh_code}-{zone}-{aisle}-{rack}-{level}-{bin_no}"
+                            
+                            loc_id = conn.execute(text("""
+                                INSERT INTO locations (warehouse_id, location_code, zone, aisle, rack, shelf_level, bin, max_capacity_kg, status)
+                                VALUES (:w_id, :code, :z, :a, :r, :l, :b, 1000.0, 'active') RETURNING id
+                            """), {"w_id": wh_id, "code": loc_code, "z": zone, "a": aisle, "r": rack, "l": level, "b": bin_no}).scalar()
+                            
+                            # Lưu lại id vào mảng để lát nữa nạp tồn kho
+                            locs[wh_code].append(loc_id)
+                            
+                            b_count += 1 # Tăng biến đếm vị trí
+    # ================= 3. TẠO 25 MẶT HÀNG (5 NCC x 5 Loại) =================
     prods = {}
-    for sku, bc, name, unit, w, mn, mx in [("SUA-TH-01", "8935001234561", "Sữa tươi tiệt trùng 1L (thùng 12)", "Thùng", 12.5, 20, 400),
-                                           ("MI-HH-02", "8935001234562", "Mì gói Hảo Hảo (thùng 30)", "Thùng", 2.5, 50, 800),
-                                           ("NUOC-LV-03", "8935001234563", "Nước suối 500ml (thùng 24)", "Thùng", 12.0, 30, 500),
-                                           ("DAU-AN-04", "8935001234564", "Dầu ăn 1L (thùng 12)", "Thùng", 11.0, 10, 200)]:
+    products_data = [
+        # NCC001: Vinamilk (Sữa)
+        ("VNM-01", "89310001", "Sữa tươi tiệt trùng 100% 1L", "Thùng", 12.5, 20, 400),
+        ("VNM-02", "89310002", "Sữa đặc Ông Thọ đỏ", "Thùng", 15.0, 15, 300),
+        ("VNM-03", "89310003", "Sữa chua ăn Vinamilk có đường", "Thùng", 5.5, 30, 500),
+        ("VNM-04", "89310004", "Sữa chua uống Probi 130ml", "Thùng", 6.0, 30, 500),
+        ("VNM-05", "89310005", "Sữa hạt Vinamilk Óc chó", "Thùng", 12.0, 10, 200),
+        # NCC002: Acecook (Mì)
+        ("ACE-01", "89320001", "Mì Hảo Hảo Tôm chua cay (30 gói)", "Thùng", 2.5, 50, 800),
+        ("ACE-02", "89320002", "Mì Đệ Nhất Thịt bằm", "Thùng", 2.6, 20, 400),
+        ("ACE-03", "89320003", "Miến Phú Hương (24 gói)", "Thùng", 1.8, 30, 500),
+        ("ACE-04", "89320004", "Phở Đệ Nhất Gà", "Thùng", 2.2, 20, 400),
+        ("ACE-05", "89320005", "Mì ly Modern Lẩu Thái", "Thùng", 1.5, 40, 600),
+        # NCC003: Suntory Pepsico (Nước)
+        ("PEP-01", "89330001", "Nước ngọt Pepsi Cola 330ml", "Thùng", 8.5, 50, 1000),
+        ("PEP-02", "89330002", "Nước khoáng Aquafina 500ml", "Thùng", 12.0, 50, 1000),
+        ("PEP-03", "89330003", "Trà Ô Long Tea+ Plus 320ml", "Thùng", 8.0, 30, 600),
+        ("PEP-04", "89330004", "Nước tăng lực Sting Dâu", "Thùng", 8.5, 40, 800),
+        ("PEP-05", "89330005", "Nước ép Twister Cam", "Thùng", 8.2, 20, 400),
+        # NCC004: Masan (Gia vị / Thực phẩm)
+        ("MSN-01", "89340001", "Nước mắm Nam Ngư 500ml", "Thùng", 13.0, 30, 600),
+        ("MSN-02", "89340002", "Nước tương Chinsu 250ml", "Thùng", 6.5, 20, 500),
+        ("MSN-03", "89340003", "Tương ớt Chinsu 250g", "Thùng", 7.0, 40, 800),
+        ("MSN-04", "89340004", "Mì Omachi Xốt Vang", "Thùng", 2.8, 50, 800),
+        ("MSN-05", "89340005", "Hạt nêm Chinsu 1kg", "Thùng", 10.5, 15, 300),
+        # NCC005: Unilever (Hóa mỹ phẩm)
+        ("UNI-01", "89350001", "Bột giặt Omo 4.5kg", "Bao", 4.6, 20, 400),
+        ("UNI-02", "89350002", "Nước rửa chén Sunlight Chanh", "Thùng", 15.0, 30, 500),
+        ("UNI-03", "89350003", "Dầu gội Clear Men 630g", "Thùng", 8.0, 15, 300),
+        ("UNI-04", "89350004", "Sữa tắm Lifebuoy 850g", "Thùng", 10.0, 20, 400),
+        ("UNI-05", "89350005", "Kem đánh răng P/S 240g", "Thùng", 9.5, 25, 500)
+    ]
+
+    for sku, bc, name, unit, w, mn, mx in products_data:
         prods[sku] = conn.execute(text("""
             INSERT INTO products (sku, barcode, product_name, unit, unit_weight_kg, min_safety_stock, max_safety_stock,
                                   approval_status, is_active, created_by, approved_by)
             VALUES (:s, :b, :n, :u, :w, :mn, :mx, 'approved', TRUE, :uid, :uid) RETURNING id
         """), {"s": sku, "b": bc, "n": name, "u": unit, "w": w, "mn": mn, "mx": mx, "uid": ids["admin"]}).scalar()
 
+# ================= 5. TẠO TỒN KHO BAN ĐẦU & PHÂN BỔ TỰ ĐỘNG =================
     t = date.today()
-    # (sku, bin, lô, hạn dùng, số lượng) - Bin B01 = 800 kg, B02 = 1000 kg khớp BR04
-    for sku, bin_no, batch, exp, qty in [("SUA-TH-01", "B01", "LOT-SUA-A", t + timedelta(days=10), 40),   # cận date (FEFO)
-                                         ("SUA-TH-01", "B02", "LOT-SUA-B", t + timedelta(days=90), 64),   # 800 kg
-                                         ("MI-HH-02", "B03", "LOT-MI-A", t + timedelta(days=180), 120),
-                                         ("NUOC-LV-03", "B04", "LOT-NUOC-A", t + timedelta(days=200), 30)]:
+    stock_entries = [
+        ("VNM-01", t + timedelta(days=30), 40),
+        ("VNM-02", t + timedelta(days=90), 50),
+        ("VNM-03", t + timedelta(days=15), 60),
+        ("VNM-04", t + timedelta(days=20), 100),
+        ("VNM-05", t + timedelta(days=60), 80),
+        ("ACE-01", t + timedelta(days=180), 200),
+        ("ACE-02", t + timedelta(days=200), 150),
+        ("ACE-03", t + timedelta(days=250), 100),
+        ("ACE-04", t + timedelta(days=300), 120),
+        ("ACE-05", t + timedelta(days=365), 90),
+        ("PEP-01", t + timedelta(days=360), 300),
+        ("PEP-02", t + timedelta(days=400), 400),
+        ("PEP-03", t + timedelta(days=150), 150),
+        ("PEP-04", t + timedelta(days=170), 200),
+        ("PEP-05", t + timedelta(days=90), 80),
+        ("MSN-01", t + timedelta(days=365), 100),
+        ("MSN-02", t + timedelta(days=365), 100),
+        ("MSN-03", t + timedelta(days=400), 150),
+        ("MSN-04", t + timedelta(days=120), 250),
+        ("MSN-05", t + timedelta(days=365), 50),
+        ("UNI-01", t + timedelta(days=720), 80),
+        ("UNI-02", t + timedelta(days=720), 100),
+        ("UNI-03", t + timedelta(days=720), 60),
+        ("UNI-04", t + timedelta(days=720), 90),
+        ("UNI-05", t + timedelta(days=720), 120),
+    ]
+
+    loc_idx_wh01 = 0
+    loc_idx_wh02 = 0
+
+    for sku, exp, qty in stock_entries:
+        days_diff = (exp - t).days
+        
+        # Tự động chọn kho dựa trên Hạn sử dụng (< 180 ngày vào WH01, >= 180 ngày vào WH02)
+        if days_diff < 180:
+            target_wh = "WH01"
+            loc_id = locs[target_wh][loc_idx_wh01]
+            loc_idx_wh01 += 1
+        else:
+            target_wh = "WH02"
+            loc_id = locs[target_wh][loc_idx_wh02]
+            loc_idx_wh02 += 1
+            
+        batch = f"LOT-{sku}-1"
+
         conn.execute(text("""
             INSERT INTO inventory_stocks (location_id, product_id, batch_no, expiry_date, quantity_on_hand)
             VALUES (:l, :p, :b, :e, :q)
-        """), {"l": locs[bin_no], "p": prods[sku], "b": batch, "e": exp, "q": qty})
+        """), {"l": loc_id, "p": prods[sku], "b": batch, "e": exp, "q": qty})
+        
         conn.execute(text("""
             INSERT INTO stock_ledger (transaction_type, reference_code, product_id, batch_no, to_location_id,
                                       quantity_change, balance_after, performed_by)
             VALUES ('PUTAWAY', 'PNK-KHOI-TAO', :p, :b, :l, :q, :q, :u)
-        """), {"p": prods[sku], "b": batch, "l": locs[bin_no], "q": qty, "u": ids["congnhan"]})
+        """), {"p": prods[sku], "b": batch, "l": loc_id, "q": qty, "u": ids["congnhan"]})
 
 
 def reset_schema(conn) -> None:
