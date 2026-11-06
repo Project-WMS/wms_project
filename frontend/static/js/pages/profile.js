@@ -24,6 +24,9 @@ WMS.ready(function (me) {
     async function refreshAccount() {
         try {
             const user = await WMS.api.get('/api/auth/me');
+            // Đánh dấu đã kiểm tra auth vừa xong để layout.js không gọi lại /api/auth/me chồng chéo
+            // trong 60s tới (dùng chung khóa AUTH_CHECK_KEY với layout.js).
+            sessionStorage.setItem('wms_auth_checked_at', String(Date.now()));
             WMS.session.save(null, user);
             renderAccount(user);
         } catch (error) {

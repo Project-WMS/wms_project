@@ -5,19 +5,26 @@ from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.core.utils import first, rows, to_decimal
+from app.core.utils import first, rows, to_decimal, today
 
 
 def list_products(db: Session) -> list:
+    # total_on_hand = tồn thực tế: cộng TOÀN BỘ lô (kể cả hết hạn / Bin bảo trì) để khớp Dashboard và trang Tồn kho.
+    # total_available = khả dụng thực xuất: chỉ lô CHƯA hết hạn (expiry_date >= hôm nay) tại Bin 'active'
+    # (khớp lookups/service.py và outbound/service.py).
     return rows(db.execute(text("""
         SELECT p.id, p.sku, p.barcode, p.product_name, p.unit, p.unit_weight_kg,
                p.min_safety_stock, p.max_safety_stock, p.is_active,
                COALESCE(t.on_hand, 0) AS total_on_hand, COALESCE(t.available, 0) AS total_available
         FROM products p
-        LEFT JOIN (SELECT product_id, SUM(quantity_on_hand) AS on_hand, SUM(quantity_available) AS available
-                   FROM inventory_stocks GROUP BY product_id) t ON t.product_id = p.id
+        LEFT JOIN (SELECT s.product_id,
+                          SUM(s.quantity_on_hand) AS on_hand,
+                          SUM(CASE WHEN s.expiry_date >= :today AND l.status = 'active'
+                                   THEN s.quantity_available ELSE 0 END) AS available
+                   FROM inventory_stocks s JOIN locations l ON s.location_id = l.id
+                   GROUP BY s.product_id) t ON t.product_id = p.id
         ORDER BY p.sku
-    """)))
+    """), {"today": today()}))
 
 
 def ensure_active(db: Session, product_id: int) -> dict:

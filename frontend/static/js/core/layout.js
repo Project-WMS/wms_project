@@ -54,7 +54,8 @@
         try {
             const me = await WMS.api.get('/api/auth/me');
             sessionStorage.setItem(AUTH_CHECK_KEY, String(Date.now()));
-            WMS.session.save(null, { id: me.id, username: me.username, full_name: me.full_name, role: me.role });
+            WMS.session.save(null, { id: me.id, username: me.username, full_name: me.full_name, role: me.role,
+                                     approval_status: me.approval_status, is_active: me.is_active });
             currentUser = me;
             applyUserUI(me, allowed);
         } catch (e) {

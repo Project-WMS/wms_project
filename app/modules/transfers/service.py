@@ -18,6 +18,17 @@ def create_transfer(db: Session, user: dict, items: list) -> dict:
         VALUES (:code, :wh, :u, :u, 'completed') RETURNING id
     """), {"code": code, "wh": DEFAULT_WAREHOUSE_ID, "u": user["id"]}).scalar()
 
+    # Chống deadlock: khóa trước các lô nguồn theo stock_id tăng dần, rồi các ô kệ đích theo
+    # to_location_id tăng dần, để 2 phiếu điều chuyển cùng lúc luôn acquis khóa theo cùng thứ tự.
+    stock_ids = sorted({int(it["stock_id"]) for it in items})
+    if stock_ids:
+        s_clause, s_params = placeholders("sid", stock_ids)
+        db.execute(text(f"SELECT id FROM inventory_stocks WHERE id IN ({s_clause}) ORDER BY id ASC FOR UPDATE"), s_params)
+    loc_ids = sorted({int(it["to_location_id"]) for it in items})
+    if loc_ids:
+        l_clause, l_params = placeholders("lid", loc_ids)
+        db.execute(text(f"SELECT id FROM locations WHERE id IN ({l_clause}) ORDER BY id ASC FOR UPDATE"), l_params)
+
     for line_no, it in enumerate(items, 1):
         src = first(db.execute(text("""
             SELECT s.id, s.location_id, s.product_id, s.batch_no, s.expiry_date, s.created_at,

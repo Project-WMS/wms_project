@@ -98,5 +98,5 @@ WMS.ready(function () {
         }
     }
     load();
-    WMS.poll(load, 5000);
+    WMS.poll(load, 15000);
 });

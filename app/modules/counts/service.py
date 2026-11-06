@@ -12,7 +12,10 @@ OPEN_STATUSES = ("draft", "counting")
 
 
 def create_count(db: Session, user: dict, location_id: int) -> dict:
-    loc = first(db.execute(text("SELECT id, location_code FROM locations WHERE id = :id"), {"id": location_id}))
+    # FOR UPDATE: 2 request đồng thời lập phiếu kiểm kê cho cùng 1 ô kệ sẽ bị tuần tự hóa,
+    # nên chỉ 1 request vượt qua được bước kiểm tra open_sheet bên dưới (chống tạo trùng phiếu mở).
+    loc = first(db.execute(text("SELECT id, location_code FROM locations WHERE id = :id FOR UPDATE"),
+                           {"id": location_id}))
     if not loc:
         raise HTTPException(404, "Ô kệ không tồn tại!")
     stocks = rows(db.execute(text("""

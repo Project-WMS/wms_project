@@ -56,7 +56,10 @@ def authenticate(db: Session, username: str, password: str) -> dict:
     return {
         "token": create_token(user["id"]),
         "user": {"id": user["id"], "username": user["username"],
-                 "full_name": user["full_name"], "role": user["role"]},
+                 "full_name": user["full_name"], "role": user["role"],
+                 # Trả kèm trạng thái để giao diện không hiển thị "Không xác định · Đã khóa"
+                 # ở lần tải /profile đầu tiên (trước khi gọi /api/auth/me).
+                 "approval_status": user["approval_status"], "is_active": user["is_active"]},
     }
 
 

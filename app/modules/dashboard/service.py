@@ -7,30 +7,42 @@ from sqlalchemy.orm import Session
 from app.core.utils import placeholders, rows, today
 from app.modules.accounts.service import MANAGEABLE_ROLES
 from app.modules.locations.service import list_locations
-from app.modules.stocks.service import NEAR_EXPIRY_DAYS, list_ledger
+from app.modules.stocks.service import NEAR_EXPIRY_DAYS
 
 
 def get_dashboard(db: Session, user: dict) -> dict:
     t = today()
     soon = t + timedelta(days=NEAR_EXPIRY_DAYS)
 
-    kpi_row = db.execute(text("""
-        SELECT COALESCE(SUM(quantity_on_hand), 0) AS total_on_hand,
-               COALESCE(SUM(quantity_allocated), 0) AS total_allocated,
-               COALESCE(SUM(quantity_available), 0) AS total_available
-        FROM inventory_stocks
-    """)).mappings().first()
-    kpi = dict(kpi_row)
+    # Gộp KPI + 3 số đếm hàng đợi vào MỘT câu SQL để giảm 3 lượt round-trip tới Supabase mỗi lần tải Dashboard.
+    # total_available chỉ tính lô CHƯA hết hạn tại Bin đang 'active' (khớp lookups/outbound/products);
+    # tồn thực tế (on_hand) và đang giữ chỗ (allocated) vẫn là toàn bộ.
+    kpi_row = dict(db.execute(text("""
+        SELECT (SELECT COALESCE(SUM(quantity_on_hand), 0) FROM inventory_stocks) AS total_on_hand,
+               (SELECT COALESCE(SUM(quantity_allocated), 0) FROM inventory_stocks) AS total_allocated,
+               (SELECT COALESCE(SUM(s.quantity_available), 0)
+                  FROM inventory_stocks s JOIN locations l ON s.location_id = l.id
+                 WHERE s.expiry_date >= :today AND l.status = 'active') AS total_available,
+               (SELECT COUNT(*) FROM putaway_tasks WHERE status = 'pending') AS putaway_tasks,
+               (SELECT COUNT(*) FROM picking_tasks WHERE status = 'allocated') AS picking_tasks,
+               (SELECT COUNT(*) FROM stock_counts WHERE status IN ('draft', 'counting')) AS open_counts
+    """), {"today": t}).mappings().first())
+    kpi = {"total_on_hand": kpi_row["total_on_hand"], "total_allocated": kpi_row["total_allocated"],
+           "total_available": kpi_row["total_available"]}
 
+    # Ngưỡng tồn cũng so trên số khả dụng thực xuất (loại lô hết hạn / Bin bảo trì) để không báo động sai.
+    # CASE đặt về 0 cho dòng lô nằm ở Bin không 'active' (LEFT JOIN locations theo điều kiện trong ON).
     low_stock = rows(db.execute(text("""
         SELECT p.id, p.sku, p.product_name, p.unit, p.min_safety_stock,
-               COALESCE(SUM(s.quantity_available), 0) AS total_available
-        FROM products p LEFT JOIN inventory_stocks s ON p.id = s.product_id
+               COALESCE(SUM(CASE WHEN l.id IS NOT NULL THEN s.quantity_available ELSE 0 END), 0) AS total_available
+        FROM products p
+        LEFT JOIN inventory_stocks s ON p.id = s.product_id AND s.expiry_date >= :today
+        LEFT JOIN locations l ON s.location_id = l.id AND l.status = 'active'
         WHERE p.is_active = TRUE AND p.min_safety_stock > 0
         GROUP BY p.id
-        HAVING COALESCE(SUM(s.quantity_available), 0) <= p.min_safety_stock
+        HAVING COALESCE(SUM(CASE WHEN l.id IS NOT NULL THEN s.quantity_available ELSE 0 END), 0) <= p.min_safety_stock
         ORDER BY p.sku
-    """)))
+    """), {"today": t}))
 
     over_stock = rows(db.execute(text("""
         SELECT p.id, p.sku, p.product_name, p.unit, p.max_safety_stock,
@@ -72,9 +84,9 @@ def get_dashboard(db: Session, user: dict) -> dict:
     bin_usage.sort(key=lambda b: b["percent"], reverse=True)
 
     pending = {
-        "putaway_tasks": db.execute(text("SELECT COUNT(*) FROM putaway_tasks WHERE status = 'pending'")).scalar() or 0,
-        "picking_tasks": db.execute(text("SELECT COUNT(*) FROM picking_tasks WHERE status = 'allocated'")).scalar() or 0,
-        "open_counts": db.execute(text("SELECT COUNT(*) FROM stock_counts WHERE status IN ('draft', 'counting')")).scalar() or 0,
+        "putaway_tasks": kpi_row["putaway_tasks"] or 0,
+        "picking_tasks": kpi_row["picking_tasks"] or 0,
+        "open_counts": kpi_row["open_counts"] or 0,
         "pending_users": 0,
     }
     roles = list(MANAGEABLE_ROLES.get(user["role"], ()))
@@ -82,6 +94,20 @@ def get_dashboard(db: Session, user: dict) -> dict:
         clause, params = placeholders("r", roles)
         pending["pending_users"] = db.execute(text(
             f"SELECT COUNT(*) FROM users WHERE approval_status = 'pending' AND role IN ({clause})"), params).scalar() or 0
+
+    # Lấy thẳng 8 dòng thẻ kho mới nhất (không dùng list_ledger vì hàm đó chạy thêm SELECT COUNT(*) thừa).
+    # Giữ nguyên cấu trúc cột/khóa JSON mà dashboard.js và template đang dùng.
+    recent_ledger = rows(db.execute(text("""
+        SELECT sl.id, sl.transaction_type, sl.reference_code, p.sku, p.product_name, p.unit, sl.batch_no,
+               lf.location_code AS from_loc, lt.location_code AS to_loc,
+               sl.quantity_change, sl.balance_after, u.full_name AS performer, sl.created_at
+        FROM stock_ledger sl
+        JOIN products p ON sl.product_id = p.id
+        LEFT JOIN locations lf ON sl.from_location_id = lf.id
+        LEFT JOIN locations lt ON sl.to_location_id = lt.id
+        JOIN users u ON sl.performed_by = u.id
+        ORDER BY sl.id DESC LIMIT 8
+    """)))
 
     return {
         "kpi": kpi,
@@ -92,5 +118,5 @@ def get_dashboard(db: Session, user: dict) -> dict:
         "by_product": by_product,
         "bin_usage": bin_usage,
         "pending": pending,
-        "recent_ledger": list_ledger(db, limit=8)["items"],
+        "recent_ledger": recent_ledger,
     }

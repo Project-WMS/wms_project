@@ -65,11 +65,23 @@ def confirm_putaway(db: Session, user: dict, *, task_id: int, scanned_qr: str, a
     """), {"loc": task["to_location_id"], "prod": task["product_id"], "batch": task["batch_no"],
            "exp": task["expiry_date"], "qty": actual_qty}))
 
-    db.execute(text("""
-        UPDATE putaway_tasks
-        SET actual_qty = :qty, status = 'completed', stock_id = :sid, performed_by = :u, completed_at = CURRENT_TIMESTAMP
-        WHERE id = :tid
-    """), {"qty": actual_qty, "sid": stock["id"], "u": user["id"], "tid": task_id})
+    # Partial Putaway: nếu công nhân xếp ít hơn số lượng được phân bổ thì giảm assigned_qty
+    # và GIỮ task ở trạng thái 'pending' để phần còn thiếu tiếp tục hiện trong hàng đợi Mobile.
+    # Chỉ khi xếp đủ mới đóng task thành 'completed'.
+    if actual_qty < task["assigned_qty"]:
+        db.execute(text("""
+            UPDATE putaway_tasks
+            SET assigned_qty = assigned_qty - :qty, actual_qty = COALESCE(actual_qty, 0) + :qty,
+                stock_id = :sid, performed_by = :u
+            WHERE id = :tid
+        """), {"qty": actual_qty, "sid": stock["id"], "u": user["id"], "tid": task_id})
+    else:
+        db.execute(text("""
+            UPDATE putaway_tasks
+            SET actual_qty = COALESCE(actual_qty, 0) + :qty, status = 'completed', stock_id = :sid,
+                performed_by = :u, completed_at = CURRENT_TIMESTAMP
+            WHERE id = :tid
+        """), {"qty": actual_qty, "sid": stock["id"], "u": user["id"], "tid": task_id})
     db.execute(text("UPDATE goods_receipt_details SET putaway_qty = putaway_qty + :qty WHERE id = :did"),
                {"qty": actual_qty, "did": task["receipt_detail_id"]})
 
@@ -85,6 +97,10 @@ def confirm_putaway(db: Session, user: dict, *, task_id: int, scanned_qr: str, a
                batch_no=task["batch_no"], from_loc=None, to_loc=task["to_location_id"],
                change=actual_qty, balance_after=stock["quantity_on_hand"], user_id=user["id"])
     db.commit()
+    remain_qty = task["assigned_qty"] - actual_qty
+    if remain_qty > 0:
+        return {"message": f"Đã xếp +{actual_qty} vào kệ {task['location_code']}. "
+                           f"Còn {remain_qty} chưa xếp, nhiệm vụ vẫn ở hàng đợi chờ xếp tiếp."}
     return {"message": f"Đã xếp thành công +{actual_qty} vào kệ {task['location_code']}!"}
 
 
@@ -111,18 +127,32 @@ def confirm_picking(db: Session, user: dict, *, task_id: int, scanned_qr: str, s
     if actual_qty > task["allocated_qty"]:
         raise HTTPException(400, f"Số lượng lấy ({actual_qty}) vượt số lượng giữ chỗ ({task['allocated_qty']})!")
 
-    # Trừ tồn thực tế (On-hand) và giải phóng toàn bộ giữ chỗ (Allocated) của task
+    # Trừ đúng số lượng lấy thực tế cho cả On-hand và Allocated.
+    # KHÔNG giải phóng toàn bộ giữ chỗ khi mới lấy một phần: phần còn thiếu vẫn được giữ chỗ
+    # cho các lần lấy tiếp theo của cùng nhiệm vụ.
     stock = first(db.execute(text("""
         UPDATE inventory_stocks
-        SET quantity_on_hand = quantity_on_hand - :qty, quantity_allocated = quantity_allocated - :alloc
+        SET quantity_on_hand = quantity_on_hand - :qty, quantity_allocated = quantity_allocated - :qty
         WHERE id = :sid
         RETURNING quantity_on_hand
-    """), {"qty": actual_qty, "alloc": task["allocated_qty"], "sid": task["stock_id"]}))
+    """), {"qty": actual_qty, "sid": task["stock_id"]}))
 
-    db.execute(text("""
-        UPDATE picking_tasks SET picked_qty = :qty, status = 'picked', performed_by = :u, picked_at = CURRENT_TIMESTAMP
-        WHERE id = :tid
-    """), {"qty": actual_qty, "u": user["id"], "tid": task_id})
+    # Partial Picking: nếu lấy ít hơn số lượng giữ chỗ thì giảm allocated_qty và GIỮ task
+    # ở trạng thái 'allocated' để phần còn thiếu tiếp tục hiện trong hàng đợi Mobile.
+    # Chỉ khi lấy đủ mới đóng task thành 'picked'.
+    if actual_qty < task["allocated_qty"]:
+        db.execute(text("""
+            UPDATE picking_tasks
+            SET allocated_qty = allocated_qty - :qty, picked_qty = COALESCE(picked_qty, 0) + :qty, performed_by = :u
+            WHERE id = :tid
+        """), {"qty": actual_qty, "u": user["id"], "tid": task_id})
+    else:
+        db.execute(text("""
+            UPDATE picking_tasks
+            SET picked_qty = COALESCE(picked_qty, 0) + :qty, status = 'picked', performed_by = :u,
+                picked_at = CURRENT_TIMESTAMP
+            WHERE id = :tid
+        """), {"qty": actual_qty, "u": user["id"], "tid": task_id})
     db.execute(text("UPDATE goods_issue_details SET picked_qty = picked_qty + :qty WHERE id = :did"),
                {"qty": actual_qty, "did": task["issue_detail_id"]})
 
@@ -138,4 +168,8 @@ def confirm_picking(db: Session, user: dict, *, task_id: int, scanned_qr: str, s
                batch_no=task["batch_no"], from_loc=task["from_location_id"], to_loc=None,
                change=-actual_qty, balance_after=stock["quantity_on_hand"], user_id=user["id"])
     db.commit()
+    remain_qty = task["allocated_qty"] - actual_qty
+    if remain_qty > 0:
+        return {"message": f"Đã lấy -{actual_qty} từ kệ {task['location_code']}. "
+                           f"Còn {remain_qty} chưa lấy, nhiệm vụ vẫn ở hàng đợi chờ lấy tiếp."}
     return {"message": f"Đã xuất thành công -{actual_qty} từ kệ {task['location_code']}!"}

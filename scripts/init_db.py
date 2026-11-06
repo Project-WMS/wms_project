@@ -291,6 +291,7 @@ def seed_demo(conn, password: str) -> None:
         ("NCC003", "Công ty TNHH Nước Giải Khát Suntory Pepsico", "supplier", "0901000003"),
         ("NCC004", "Công ty CP Hàng Tiêu Dùng Masan", "supplier", "0901000004"),
         ("NCC005", "Công ty TNHH Quốc tế Unilever VN", "supplier", "0901000005"),
+        
         # 5 Khách hàng (Customers)
         ("KH001", "Chuỗi Siêu thị Bách Hóa Xanh", "customer", "0902000001"),
         ("KH002", "Hệ thống Siêu thị Co.opmart", "customer", "0902000002"),
@@ -317,15 +318,16 @@ def seed_demo(conn, password: str) -> None:
 
     locs = {"WH01": [], "WH02": []}
     for wh_code, wh_id in wh_ids.items():
-        b_count = 1 # Biến đếm Vị trí (Bin) chạy liên tục từ B001 đến B900 cho mỗi kho
+# Biến đếm Vị trí (Bin) chạy liên tục từ B001 đến B180 cho mỗi kho
+        b_count = 1 
         
-        # 3 khu vực (Z01-Z03)
-        for z in range(1, 4):
+        # 2 khu vực (Z01-Z02)
+        for z in range(1, 3):
             # 3 dãy (A01-A03)
             for a in range(1, 4):
                 # 5 kệ (R01-R05)
                 for r in range(1, 6):
-                    # 5 tầng (L01-L05) - Giữ nguyên theo đúng bản cập nhật của bạn
+                    # 5 tầng (L01-L05) 
                     for l in range(1, 6):
                         # 4 vị trí mỗi tầng
                         for b in range(1, 5):

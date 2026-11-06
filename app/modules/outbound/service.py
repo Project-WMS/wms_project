@@ -24,16 +24,18 @@ def create_issue(db: Session, user: dict, customer_id: int, items: list) -> dict
     for line_no, it in enumerate(items, 1):
         prod = ensure_active(db, it["product_id"])
         # BR03: Ưu tiên 1 FEFO (expiry_date ASC), ưu tiên 2 FIFO (created_at ASC); bỏ qua lô đã hết hạn và Bin không active.
+        # Tìm lô trên TOÀN BỘ các kho đang hoạt động (đồng bộ với lookups/service.py) để không "đóng băng"
+        # hàng nằm ở kho khác kho mặc định (WH01/WH02).
         # FOR UPDATE khóa các dòng tồn kho để 2 đơn xuất duyệt cùng lúc không giữ chỗ trùng (NFR2).
         batches = rows(db.execute(text("""
             SELECT s.id, s.location_id, s.batch_no, s.expiry_date, s.quantity_available
             FROM inventory_stocks s
             JOIN locations l ON s.location_id = l.id
             WHERE s.product_id = :p AND s.quantity_available > 0 AND s.expiry_date >= :today
-              AND l.status = 'active' AND l.warehouse_id = :wh
+              AND l.status = 'active'
             ORDER BY s.expiry_date ASC, s.created_at ASC, s.id ASC
             FOR UPDATE OF s
-        """), {"p": it["product_id"], "today": t, "wh": DEFAULT_WAREHOUSE_ID}))
+        """), {"p": it["product_id"], "today": t}))
 
         total_avail = sum(b["quantity_available"] for b in batches)
         if total_avail < it["quantity"]:
@@ -123,7 +125,8 @@ def cancel_issue(db: Session, issue_id: int) -> dict:
     """), {"id": issue_id}))
     if gi["status"] != "allocated" or any(t["status"] != "allocated" for t in tasks):
         raise HTTPException(400, "Đơn đã có hàng được lấy ra khỏi kệ nên không thể hủy!")
-    for t in tasks:
+    # Khóa các lô theo stock_id tăng dần để 2 phiếu hủy cùng lúc luôn acquis khóa theo cùng thứ tự (chống deadlock).
+    for t in sorted(tasks, key=lambda x: x["stock_id"]):
         db.execute(text("SELECT id FROM inventory_stocks WHERE id = :id FOR UPDATE"), {"id": t["stock_id"]})
         db.execute(text("UPDATE inventory_stocks SET quantity_allocated = quantity_allocated - :q WHERE id = :id"),
                    {"q": t["allocated_qty"], "id": t["stock_id"]})

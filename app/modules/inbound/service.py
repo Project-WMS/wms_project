@@ -37,6 +37,13 @@ def create_receipt(db: Session, user: dict, supplier_id: int, items: list) -> di
         VALUES (:code, :sup, :wh, :u, :u, 'approved', CURRENT_TIMESTAMP) RETURNING id
     """), {"code": code, "sup": supplier_id, "wh": DEFAULT_WAREHOUSE_ID, "u": user["id"]}).scalar()
 
+    # Chống deadlock: khóa trước toàn bộ ô kệ đích theo id tăng dần để 2 phiếu nhập duyệt cùng lúc
+    # với tập ô kệ chồng lấn luôn acquis khóa theo cùng một thứ tự (Consistent Lock Ordering).
+    loc_ids = sorted({int(it["to_location_id"]) for it in items})
+    if loc_ids:
+        clause, l_params = placeholders("lid", loc_ids)
+        db.execute(text(f"SELECT id FROM locations WHERE id IN ({clause}) ORDER BY id ASC FOR UPDATE"), l_params)
+
     for line_no, it in enumerate(items, 1):
         prod = ensure_active(db, it["product_id"])
         batch = it["batch_no"].strip()

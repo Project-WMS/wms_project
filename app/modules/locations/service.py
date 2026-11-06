@@ -39,8 +39,12 @@ def list_locations(db: Session) -> list:
 def check_bin_capacity(db: Session, location_id: int, add_qty: int, product_id: int,
                        include_pending_putaway: bool = False) -> None:
     """BR04: Bin phải 'active' và tổng (SL tồn * trọng lượng đơn vị) không vượt max_capacity_kg.
-    include_pending_putaway=True: tính cả hàng đã chỉ định vào Bin nhưng công nhân chưa xếp."""
-    loc = first(db.execute(text("SELECT location_code, max_capacity_kg, status FROM locations WHERE id = :id"),
+    include_pending_putaway=True: tính cả hàng đã chỉ định vào Bin nhưng công nhân chưa xếp.
+
+    Dòng `locations` được khóa bi quan (FOR UPDATE) để tuần tự hóa mọi thao tác nhắm cùng một Bin:
+    nếu 2 request cùng đọc "còn trống 100kg" rồi mỗi bên thêm 80kg, request thứ hai sẽ phải chờ
+    request thứ nhất commit nên nhìn thấy tải trọng mới và bị chặn đúng (chống Race Condition BR04)."""
+    loc = first(db.execute(text("SELECT location_code, max_capacity_kg, status FROM locations WHERE id = :id FOR UPDATE"),
                            {"id": location_id}))
     if not loc:
         raise HTTPException(404, "Ô Bin không tồn tại!")
